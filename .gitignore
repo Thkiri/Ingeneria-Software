@@ -1,0 +1,34 @@
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+env/
+
+# Python / Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Base de datos SQLite local (comentar si se desea versionar datos de prueba)
+#db.sqlite3
+#db.sqlite3-journal
+
+# Archivos estáticos y media cargados por usuarios
+staticfiles/
+media/
+
+# Configuraciones de IDE y editores
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs y temporales
+*.log
+scratch/
