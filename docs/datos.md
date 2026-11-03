@@ -142,9 +142,46 @@ El sistema **TecniMotor** es una plataforma web para la gestión integral de ope
 
 ---
 
+## 🌐 API RESTful JSON (Sprint 2 - Backend Activo)
+
+La API JSON ha sido habilitada mediante **Django REST Framework** y **django-cors-headers** para ser consumida por el Frontend de React (puerto 5173).
+
+### Endpoints Disponibles
+
+#### 1. Órdenes de Trabajo (`/api/ordenes/`)
+* **`GET /api/ordenes/`**: Listado completo paginado con objetos anidados de cliente, vehículo, mecánico asignado e historial de cambios de estado.
+  * Filtro por estado: `?estado=ING` (valores válidos: `ING`, `DIA`, `ESP`, `REP`, `CAL`, `LST`, `ENT`, `CAN`).
+  * Filtro por cliente: `?cliente=<id>`.
+  * Filtro por vehículo: `?vehiculo=<id>`.
+  * Filtro por mecánico: `?mecanico=<id>`.
+  * Búsqueda general: `?search=<texto>` (busca en número de OT, patente de vehículo, nombre o RUT de cliente).
+* **`POST /api/ordenes/`**: Creación de nueva OT. Valida que el vehículo pertenezca obligatoriamente al cliente.
+* **`GET /api/ordenes/{numero}/`**: Detalle completo de una orden específica.
+* **`PUT / PATCH /api/ordenes/{numero}/`**: Actualización total o parcial de campos técnicos.
+* **`POST /api/ordenes/{numero}/cambiar-estado/`**: Transición de estado con auditoría automática.
+  * Payload: `{ "nuevo_estado": "REP", "observacion": "Iniciando cambio de frenos" }`.
+
+#### 2. Clientes (`/api/clientes/`)
+* **`GET /api/clientes/`**: Listado de clientes.
+  * Búsqueda: `?search=<texto>` (por RUT, nombre o apellido).
+* **`POST /api/clientes/`**: Creación de nuevo cliente con validación de formato RUT chileno.
+
+#### 3. Vehículos (`/api/vehiculos/`)
+* **`GET /api/vehiculos/`**: Listado de vehículos con ficha técnica.
+  * Filtro por cliente: `?cliente=<id>` *(permite auto-filtrar vehículos del cliente seleccionado en formularios de React)*.
+  * Búsqueda: `?search=<texto>` (por patente, marca o modelo).
+* **`POST /api/vehiculos/`**: Creación de nuevo vehículo asociado a un cliente.
+
+#### 4. Mecánicos (`/api/mecanicos/`)
+* **`GET /api/mecanicos/`**: Lista de usuarios técnicos activos para poblar el selector de asignación en los formularios.
+
+---
+
 ## 🔮 Roadmap / Próximas Fases Sugeridas
 
 1. **Vistas Públicas para Clientes:** Consulta en línea del estado de su vehículo ingresando únicamente su RUT o patente.
 2. **Módulo de Presupuestos y Cobros:** Registro de mano de obra y costo de repuestos con cálculo de total y estado de pago.
 3. **Notificaciones Automáticas:** Envío de correo o mensaje (WhatsApp/SMS) cuando la orden cambie a *"Lista para Entregar"*.
 4. **Módulo de Inventario de Repuestos:** Control de stock físico del pañol de repuestos.
+
+https://www.figma.com/design/irL309LqqRsooMsDGQ4KWQ/Sin-t%C3%ADtulo?node-id=0-1&t=tzvy2iWWA97IDwCF-1

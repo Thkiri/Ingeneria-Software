@@ -32,3 +32,12 @@ desktop.ini
 # Logs y temporales
 *.log
 scratch/
+
+# Documentos ofimáticos e informes
+*.docx
+*.doc
+Reporte*
+
+# Directrices de IA y asistentes
+AGENTS*.md
+
