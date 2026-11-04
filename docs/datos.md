@@ -177,6 +177,69 @@ La API JSON ha sido habilitada mediante **Django REST Framework** y **django-cor
 
 ---
 
+### 💻 Frontend SPA (Sprint 2 - React + Vite Habilitado)
+
+La interfaz gráfica del taller fue desarrollada con **React 19 + Vite** y consume directamente la API REST de Django.
+
+#### Componentes Principales (`Frontend/src/`):
+1. **`components/Dashboard.jsx` (Tablero Kanban de 7 Columnas):**
+   - Replica con precisión matemática el mockup `Dashboard jefe.png`.
+   - 7 columnas ordenadas por estado (`ING`, `DIA`, `ESP`, `REP`, `CAL`, `LST`, `ENT`) con barras de color y contadores automáticos.
+   - Tarjetas de OT con número de orden, patente destacada, modelo de auto, mecánico asignado y badge de color.
+   - Barra de filtros reactiva (búsqueda rápida por patente/RUT/cliente, filtro por mecánico asignado y selector de fecha).
+   - Banner inferior de advertencia para órdenes en espera de repuestos (`ESP`).
+   - Al hacer clic en cualquier tarjeta, se abre el modal de detalle interactivo.
+
+2. **`components/NuevaOT.jsx` (Formulario de Ingreso de Órdenes):**
+   - Replica el diseño de `Nueva OT.png`.
+   - Sección 01 (Datos del cliente): Nombre completo, RUT, Teléfono y Correo.
+   - Sección 02 (Datos del vehículo): Patente, Marca, Modelo, Año, Kilometraje y Motivo de ingreso.
+   - Tarjeta informativa lateral con fecha/hora actual y estado inicial "Ingresada".
+   - Al guardar, busca o crea automáticamente el Cliente y Vehículo en Django sin duplicar, y genera la OT que aparece inmediatamente en la primera columna del Kanban.
+
+3. **`components/DetalleOTModal.jsx` (Detalle y Transición de Estados):**
+   - Replica `Detalles OT.png`.
+   - Línea de tiempo visual del ciclo de vida (7 pasos) con indicadores de avance.
+   - Selector interactivo para cambiar de estado rápidamente con campo de observación opcional.
+   - Pestañas de Diagnóstico, Repuestos requeridos e Historial de auditoría en tiempo real.
+
+4. **`services/api.js`:** Cliente HTTP centralizado que maneja todas las peticiones a `http://127.0.0.1:8000/api/`.
+
+5. **`index.css`:** Sistema de diseño completo con tokens de color (`#0B192C`, `#C34A12`, etc.), tipografía Inter y controles de 48px de altura.
+
+---
+
+## 📝 Observaciones Críticas de Arquitectura y Próximas Mejoras (Sprint 3 y 4)
+
+A partir de la revisión técnica del Sprint 2, se establecen las siguientes decisiones de diseño para las fases subsiguientes:
+
+### 1. Sistema de Autenticación, Roles y Vista de Cliente
+* **Personal del taller (Jefe de taller, Recepción, Mecánicos):** Implementar login formal mediante tokens (JWT / Sesión Django) con permisos basados en roles (RBAC). El mecánico dispondrá de una vista simplificada filtrada exclusivamente por sus OTs asignadas.
+* **Acceso de Clientes (Sin fricción):** Los clientes externos no requerirán creación de cuenta ni contraseña. Conforme a `VistaCliente1.png`, accederán mediante una vista pública ingresando únicamente **RUT + Patente** para consultar el estado en tiempo real.
+* **Modo Demostración en Desarrollo:** Incorporar temporalmente en el Sidebar un conmutador rápido de usuario/rol para facilitar las pruebas y presentaciones académicas.
+
+### 2. Máquina de Estados Finitos (Transiciones Válidas)
+* Restringir el cambio libre de estados para impedir regresiones inconsistentes (ej. no permitir que una orden en *Diagnóstico* retroceda a *Ingresada*).
+* Matriz de transiciones permitidas:
+  * `ING (Ingresada)` ➔ `DIA (En Diagnóstico)` | `CAN (Cancelada)`
+  * `DIA (En Diagnóstico)` ➔ `ESP (Espera Repuestos)` | `REP (En Reparación)` | `CAN`
+  * `ESP (Espera Repuestos)` ➔ `REP (En Reparación)` | `CAN`
+  * `REP (En Reparación)` ➔ `CAL (Control de Calidad)`
+  * `CAL (Control de Calidad)` ➔ `LST (Lista para Entrega)` | `REP` (si reprueba control)
+  * `LST (Lista para Entrega)` ➔ `ENT (Entregada)`
+  * `ENT` y `CAN` son estados terminales.
+
+### 3. Edición Técnica en Detalle de OT (Repuestos y Observaciones)
+* El formulario de *Nueva OT* se mantiene enfocado exclusivamente en la recepción (Cliente + Auto + Motivo de falla), ya que en el momento del ingreso aún no se conocen las piezas requeridas.
+* En el *Modal de Detalle*, habilitar un modo de edición para que el mecánico o jefe de taller pueda actualizar el diagnóstico definitivo, los repuestos requeridos y las observaciones durante las etapas de Diagnóstico y Reparación.
+
+### 4. Empaquetado y Distribución
+* La plataforma es nativamente Web (Django REST + React Vite).
+* Es compatible para despliegue en contenedores Docker (`docker-compose`).
+* Puede compilarse a aplicación ejecutable de escritorio de Windows (`.exe`) mediante Electron o Tauri si se requiere instalación local para los equipos del taller.
+
+---
+
 ## 🔮 Roadmap / Próximas Fases Sugeridas
 
 1. **Vistas Públicas para Clientes:** Consulta en línea del estado de su vehículo ingresando únicamente su RUT o patente.

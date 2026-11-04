@@ -1,30 +1,28 @@
 @echo off
-title TecniMotor - Servidor de Desarrollo
+title TecniMotor - Entorno de Desarrollo Full Stack
 
 echo ========================================================
-echo          Iniciando Servidor TecniMotor
-echo ========================================================
-echo.
-
-cd /d "%~dp0Backend"
-
-if exist "..\.venv\Scripts\activate.bat" (
-    echo Activando entorno virtual...
-    call "..\.venv\Scripts\activate.bat"
-) else if exist ".venv\Scripts\activate.bat" (
-    echo Activando entorno virtual...
-    call ".venv\Scripts\activate.bat"
-)
-
-echo.
-echo ========================================================
-echo   Panel de Administracion: http://127.0.0.1:8000/admin/
-echo   Para detener el servidor: Presiona CTRL + C
+echo          Iniciando Plataforma TecniMotor
 echo ========================================================
 echo.
 
-start http://127.0.0.1:8000/admin/
+:: 1. Iniciar Servidor Backend Django en ventana independiente
+echo [1/2] Iniciando Backend Django (Puerto 8000)...
+start "TecniMotor - Backend Django" cmd /k "cd /d "%~dp0Backend" && call "..\.venv\Scripts\activate.bat" && python manage.py runserver 8000"
 
-python manage.py runserver
+:: 2. Iniciar Servidor Frontend Vite en ventana independiente
+echo [2/2] Iniciando Frontend React + Vite (Puerto 5173)...
+start "TecniMotor - Frontend React" cmd /k "cd /d "%~dp0Frontend" && npm run dev"
 
-pause
+echo.
+echo ========================================================
+echo   Frontend (Dashboard React): http://localhost:5173/
+echo   Backend API REST:           http://127.0.0.1:8000/api/
+echo   Panel de Administracion:    http://127.0.0.1:8000/admin/
+echo ========================================================
+echo.
+echo Abriendo Dashboard en el navegador...
+
+timeout /t 3 >nul
+start http://localhost:5173/
+
