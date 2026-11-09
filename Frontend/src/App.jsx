@@ -4,10 +4,11 @@ import Topbar from './components/Topbar';
 import Dashboard from './components/Dashboard';
 import NuevaOT from './components/NuevaOT';
 import DetalleOTModal from './components/DetalleOTModal';
+import ConsultaCliente from './components/ConsultaCliente';
 import { getOrdenes, getMecanicos } from './services/api';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' | 'nueva-ot'
+  const [currentView, setCurrentView] = useState('consulta-cliente'); // 'consulta-cliente' | 'dashboard' | 'nueva-ot'
   const [ordenes, setOrdenes] = useState([]);
   const [mecanicos, setMecanicos] = useState([]);
   const [selectedOrden, setSelectedOrden] = useState(null);
@@ -51,6 +52,14 @@ export default function App() {
     setSelectedOrden(updatedOrden);
     loadData();
   };
+
+  if (currentView === 'consulta-cliente') {
+    return (
+      <ConsultaCliente
+        onIrATaller={() => setCurrentView('dashboard')}
+      />
+    );
+  }
 
   return (
     <div className="app-layout">

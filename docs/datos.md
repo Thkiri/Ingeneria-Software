@@ -248,3 +248,5 @@ A partir de la revisión técnica del Sprint 2, se establecen las siguientes dec
 4. **Módulo de Inventario de Repuestos:** Control de stock físico del pañol de repuestos.
 
 https://www.figma.com/design/irL309LqqRsooMsDGQ4KWQ/Sin-t%C3%ADtulo?node-id=0-1&t=tzvy2iWWA97IDwCF-1
+
+recurda que en diagnositco tmabien se pide o cobra por realizarlo aprox 20 mil epsos quiza dejemoslo por ahi

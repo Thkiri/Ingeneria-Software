@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, DollarSign, Wrench } from 'lucide-react';
+import { LayoutDashboard, FileText, DollarSign, Wrench, ExternalLink } from 'lucide-react';
 
 export default function Sidebar({ currentView, onNavigate, counts = {} }) {
   return (
@@ -37,11 +37,22 @@ export default function Sidebar({ currentView, onNavigate, counts = {} }) {
           <button
             className="nav-item"
             style={{ opacity: 0.6, cursor: 'not-allowed' }}
-            title="Módulo de Cobros - Disponible en Sprint 3"
+            title="Módulo de Cobros - Disponible en Fase 4"
             onClick={(e) => e.preventDefault()}
           >
             <DollarSign size={18} />
-            <span>Cobros (Sprint 3)</span>
+            <span>Cobros</span>
+          </button>
+
+          <div style={{ margin: '12px 0', borderTop: '1px solid rgba(255,255,255,0.08)' }} />
+
+          <button
+            className={`nav-item ${currentView === 'consulta-cliente' ? 'active' : ''}`}
+            onClick={() => onNavigate('consulta-cliente')}
+            title="Abrir vista pública de consulta para clientes (RUT + Patente)"
+          >
+            <ExternalLink size={18} />
+            <span>Portal Cliente (Público)</span>
           </button>
         </nav>
       </div>

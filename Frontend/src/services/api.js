@@ -146,3 +146,78 @@ export async function getMecanicos() {
   return data.results ? data.results : data;
 }
 
+// ========================================================
+// Consulta Pública de Clientes (HU-08 - Sin Fricción)
+// ========================================================
+
+export async function consultarOrdenPublica(rut, patente) {
+  const params = new URLSearchParams({
+    rut: rut.trim(),
+    patente: patente.trim(),
+  });
+  return await apiRequest(`/consulta-publica/?${params.toString()}`);
+}
+
+// ========================================================
+// Detalle de Repuestos (HU-10)
+// ========================================================
+
+export async function getRepuestos(ordenId) {
+  const data = await apiRequest(`/repuestos/?orden=${ordenId}`);
+  return data.results ? data.results : data;
+}
+
+export async function createRepuesto(repuestoData) {
+  return await apiRequest('/repuestos/', {
+    method: 'POST',
+    body: JSON.stringify(repuestoData),
+  });
+}
+
+export async function deleteRepuesto(id) {
+  return await apiRequest(`/repuestos/${id}/`, {
+    method: 'DELETE',
+  });
+}
+
+// ========================================================
+// Registro de Horas Hombre (HU-05)
+// ========================================================
+
+export async function getHoras(ordenId) {
+  const data = await apiRequest(`/horas/?orden=${ordenId}`);
+  return data.results ? data.results : data;
+}
+
+export async function createHora(horaData) {
+  return await apiRequest('/horas/', {
+    method: 'POST',
+    body: JSON.stringify(horaData),
+  });
+}
+
+export async function deleteHora(id) {
+  return await apiRequest(`/horas/${id}/`, {
+    method: 'DELETE',
+  });
+}
+
+// ========================================================
+// Control de Calidad (HU-07)
+// ========================================================
+
+export async function createControlCalidad(calidadData) {
+  return await apiRequest('/controles-calidad/', {
+    method: 'POST',
+    body: JSON.stringify(calidadData),
+  });
+}
+
+export async function updateControlCalidad(id, calidadData) {
+  return await apiRequest(`/controles-calidad/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(calidadData),
+  });
+}
+
+
