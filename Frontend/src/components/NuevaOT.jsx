@@ -107,7 +107,11 @@ export default function NuevaOT({ onCancel, onSuccess }) {
     year: 'numeric'
   }).format(new Date());
 
-  const horaActual = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+  const horaActual = new Date().toLocaleTimeString('es-CL', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -342,11 +346,10 @@ export default function NuevaOT({ onCancel, onSuccess }) {
               </div>
 
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Hora de ingreso</span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Hora de Chile</span>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                  Hora de ingreso · Hora de Chile
                 </div>
-                <div style={{ fontSize: '15px', fontWeight: 700, marginTop: '2px' }}>{horaActual} h</div>
+                <div style={{ fontSize: '15px', fontWeight: 700, marginTop: '2px' }}>{horaActual} hrs</div>
               </div>
 
               <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)' }} />

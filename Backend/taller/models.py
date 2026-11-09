@@ -226,20 +226,20 @@ class OrdenTrabajo(models.Model):
                 f"Transición inválida desde '{self.get_estado_display()}'. Solo se permite avanzar a: {permitidos_str}."
             )
 
-        # 4. Regla: Para avanzar a EN_DIAGNOSTICO se exige mecánico asignado
+        # 4. Asignación de mecánico para EN_DIAGNOSTICO
         if nuevo_estado == self.Estado.EN_DIAGNOSTICO and not self.mecanico_asignado_id:
-            raise ValidationError("Regla de negocio: Debe asignar un mecánico responsable antes de pasar a 'En Diagnóstico'.")
+            raise ValidationError("Debe asignar un mecánico responsable antes de pasar a 'En Diagnóstico'.")
 
-        # 5. Regla: Para avanzar a EN_REPARACION no puede tener presupuesto rechazado
+        # 5. Estado del presupuesto para EN_REPARACION
         if nuevo_estado == self.Estado.EN_REPARACION and self.presupuesto_aprobado is False:
-            raise ValidationError("Regla de negocio: No se puede avanzar a 'En Reparación' con presupuesto rechazado por el cliente.")
+            raise ValidationError("No se puede avanzar a 'En Reparación' con presupuesto rechazado por el cliente.")
 
-        # 6. Regla HU-07: Para avanzar a LISTA_ENTREGA se exige Control de Calidad Aprobado
+        # 6. Certificación de Control de Calidad para LISTA_ENTREGA
         if nuevo_estado == self.Estado.LISTA:
             calidad = getattr(self, 'control_calidad', None)
             if not calidad or not calidad.aprobado:
                 raise ValidationError(
-                    "Regla de negocio HU-07: No se puede avanzar a 'Lista para Entrega' sin un Control de Calidad aprobado por el Jefe de Taller."
+                    "No se puede avanzar a 'Lista para Entrega' sin un Control de Calidad aprobado por el Jefe de Taller."
                 )
 
         # Si viene de reingreso por garantía hacia EN_DIAGNOSTICO, resetear costo_diagnostico a 0
@@ -352,7 +352,7 @@ class RegistroHoras(models.Model):
         super().clean()
         if self.orden_id and self.orden.estado in [OrdenTrabajo.Estado.INGRESADA, OrdenTrabajo.Estado.EN_DIAGNOSTICO]:
             raise ValidationError(
-                "Regla de negocio HU-05: No se pueden registrar horas hombre durante 'Ingresada' o 'En Diagnóstico'. Las horas se imputan a partir de 'En Reparación'."
+                "No se pueden registrar las horas en diagnóstico. Las horas se imputan a partir de 'En Reparación'."
             )
 
     def save(self, *args, **kwargs):

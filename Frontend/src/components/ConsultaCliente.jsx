@@ -80,7 +80,8 @@ export default function ConsultaCliente({ onIrATaller }) {
       }) + ' · ' + d.toLocaleTimeString('es-CL', {
         hour: '2-digit',
         minute: '2-digit',
-      }) + ' h';
+        hour12: false,
+      }) + ' hrs';
     } catch {
       return null;
     }

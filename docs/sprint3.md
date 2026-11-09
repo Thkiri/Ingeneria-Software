@@ -123,4 +123,18 @@ stateDiagram-v2
   - [x] Vista de Recepción en [`Frontend/src/components/VistaRecepcion.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/VistaRecepcion.jsx) con tabla de órdenes (`RecepcionInicio.png`) y directorio maestro-detalle de Clientes y Vehículos (`RecepcionclientesyVEhiculos.png`).
   - [x] Vista de Mecánico en [`Frontend/src/components/VistaMecanico.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/VistaMecanico.jsx) con KPIs y tarjetas de carga de trabajo asignada (`MecanicoMisORdenes.png`).
   - [x] Vista de Liquidación y Cobros en [`Frontend/src/components/VistaCobros.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/VistaCobros.jsx) con estructura oficial de 4 líneas + IVA 19%.
-- [ ] **Fase 4: Detalle de OT con Pestaña de Repuestos, Horas y Calidad.**
+- [x] **Fase 4: Detalle de OT con Pestaña de Repuestos, Horas y Calidad.**
+  - [x] Corrección de formato horario a 24h (`hour12: false`) y espaciado en [`NuevaOT.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/NuevaOT.jsx), [`Dashboard.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/Dashboard.jsx) y [`ConsultaCliente.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/ConsultaCliente.jsx).
+  - [x] Arquitectura modular desacoplada para el Detalle de OT en `Frontend/src/components/detalle/`:
+    - [`DetalleOTModal.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/DetalleOTModal.jsx) (Orquestador principal).
+    - [`DetalleRecepcion.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/detalle/DetalleRecepcion.jsx) (Vista de solo lectura técnica y entrega `DetalleOTRepecion.png`).
+    - [`TabDiagnostico.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/detalle/TabDiagnostico.jsx) (Diagnóstico, segundo mecánico y garantía).
+    - [`TabRepuestos.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/detalle/TabRepuestos.jsx) y [`ModalAgregarRepuesto.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/detalle/ModalAgregarRepuesto.jsx) (`Agregar repuestro.png` y `repeustoAgregado.png`).
+    - [`TabHorasHombre.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/detalle/TabHorasHombre.jsx) (Registro de horas HU-05 con bloqueo en `ING`/`DIA`).
+    - [`TabControlCalidad.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/detalle/TabControlCalidad.jsx) (Certificación HU-07 con aprobación automática a `LISTA_ENTREGA` y rechazo automático a `EN_REPARACION`).
+  - [x] Ajustes de usabilidad y validación final:
+    - Ampliación del cuadro de Diagnóstico Técnico a `<textarea>` en [`TabDiagnostico.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/detalle/TabDiagnostico.jsx).
+    - Mensajes de validación limpios en frontend y backend (sin prefijos técnicos).
+    - Filtrado estricto en [`MecanicoViewSet`](file:///c:/Users/mateo/Desktop/TecniMotor/Backend/taller/views.py#L74-L84) mostrando exclusivamente a los 2 mecánicos reales del taller (`Diego Soto` y `Felipe Vargas`).
+    - Avance fluido a `LST` (*Lista para Entrega*) al aprobar Control de Calidad o desde el panel de estados.
+

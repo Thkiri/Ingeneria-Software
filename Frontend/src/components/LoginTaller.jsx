@@ -3,7 +3,7 @@ import { Wrench, ArrowRight, Users } from 'lucide-react';
 
 export const USUARIOS_DEMO = {
   JEFE_TALLER: {
-    id: 2,
+    id: 4,
     username: 'claudio.munoz',
     password: 'jefe123',
     nombre: 'Claudio Muñoz',
@@ -13,7 +13,7 @@ export const USUARIOS_DEMO = {
     vistaInicial: 'dashboard',
   },
   RECEPCIONISTA: {
-    id: 3,
+    id: 5,
     username: 'carolina.perez',
     password: 'recepcion123',
     nombre: 'Carolina Pérez',
@@ -23,7 +23,7 @@ export const USUARIOS_DEMO = {
     vistaInicial: 'recepcion-inicio',
   },
   MECANICO: {
-    id: 4,
+    id: 6,
     username: 'diego.soto',
     password: 'mecanico123',
     nombre: 'Diego Soto',

@@ -73,12 +73,15 @@ class VehiculoViewSet(viewsets.ModelViewSet):
 
 class MecanicoViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    Endpoint para listar personal técnico y usuarios del taller para asignaciones.
+    Endpoint para listar exclusivamente a los mecánicos activos del taller para asignaciones.
     """
     serializer_class = UserSimpleSerializer
 
     def get_queryset(self):
-        return User.objects.filter(is_active=True).select_related('perfil').order_by('first_name', 'username')
+        return User.objects.filter(
+            is_active=True,
+            perfil__rol=PerfilUsuario.Rol.MECANICO
+        ).select_related('perfil').order_by('first_name', 'username')
 
 
 class DetalleRepuestoViewSet(viewsets.ModelViewSet):

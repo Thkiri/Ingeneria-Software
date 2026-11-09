@@ -55,7 +55,11 @@ export default function Dashboard({
   const entregadas = ordenes.filter(o => o.estado === 'ENT').length;
   const esperaRepuestos = ordenes.filter(o => o.estado === 'ESP');
 
-  const horaActual = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+  const horaActual = new Date().toLocaleTimeString('es-CL', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
