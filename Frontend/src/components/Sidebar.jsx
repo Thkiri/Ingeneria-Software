@@ -1,7 +1,9 @@
 import React from 'react';
-import { LayoutDashboard, FileText, DollarSign, Wrench, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, FileText, DollarSign, Wrench, Users, ExternalLink, ClipboardList } from 'lucide-react';
 
-export default function Sidebar({ currentView, onNavigate, counts = {} }) {
+export default function Sidebar({ currentView, onNavigate, usuarioActual }) {
+  const rol = usuarioActual?.rol || 'JEFE_TALLER';
+
   return (
     <aside className="sidebar">
       <div>
@@ -18,36 +20,87 @@ export default function Sidebar({ currentView, onNavigate, counts = {} }) {
         </div>
 
         <nav className="sidebar-nav">
-          <button
-            className={`nav-item ${currentView === 'dashboard' ? 'active' : ''}`}
-            onClick={() => onNavigate('dashboard')}
-          >
-            <LayoutDashboard size={18} />
-            <span>Dashboard</span>
-          </button>
+          {/* MENÚ EXCLUSIVO JEFE DE TALLER */}
+          {rol === 'JEFE_TALLER' && (
+            <>
+              <button
+                className={`nav-item ${currentView === 'dashboard' ? 'active' : ''}`}
+                onClick={() => onNavigate('dashboard')}
+              >
+                <LayoutDashboard size={18} />
+                <span>Dashboard</span>
+              </button>
 
-          <button
-            className={`nav-item ${currentView === 'nueva-ot' ? 'active' : ''}`}
-            onClick={() => onNavigate('nueva-ot')}
-          >
-            <FileText size={18} />
-            <span>Órdenes de trabajo</span>
-          </button>
+              <button
+                className={`nav-item ${currentView === 'nueva-ot' ? 'active' : ''}`}
+                onClick={() => onNavigate('nueva-ot')}
+              >
+                <FileText size={18} />
+                <span>Órdenes de trabajo</span>
+              </button>
 
-          <button
-            className="nav-item"
-            style={{ opacity: 0.6, cursor: 'not-allowed' }}
-            title="Módulo de Cobros - Disponible en Fase 4"
-            onClick={(e) => e.preventDefault()}
-          >
-            <DollarSign size={18} />
-            <span>Cobros</span>
-          </button>
+              <button
+                className={`nav-item ${currentView === 'clientes-vehiculos' ? 'active' : ''}`}
+                onClick={() => onNavigate('clientes-vehiculos')}
+              >
+                <Users size={18} />
+                <span>Clientes y Vehículos</span>
+              </button>
+
+              <button
+                className={`nav-item ${currentView === 'cobros' ? 'active' : ''}`}
+                onClick={() => onNavigate('cobros')}
+              >
+                <DollarSign size={18} />
+                <span>Cobros</span>
+              </button>
+            </>
+          )}
+
+          {/* MENÚ EXCLUSIVO RECEPCIÓN (RecepcionInicio.png) */}
+          {rol === 'RECEPCIONISTA' && (
+            <>
+              <button
+                className={`nav-item ${currentView === 'recepcion-inicio' ? 'active' : ''}`}
+                onClick={() => onNavigate('recepcion-inicio')}
+              >
+                <LayoutDashboard size={18} />
+                <span>Inicio</span>
+              </button>
+
+              <button
+                className={`nav-item ${currentView === 'nueva-ot' ? 'active' : ''}`}
+                onClick={() => onNavigate('nueva-ot')}
+              >
+                <FileText size={18} />
+                <span>Órdenes</span>
+              </button>
+
+              <button
+                className={`nav-item ${currentView === 'clientes-vehiculos' ? 'active' : ''}`}
+                onClick={() => onNavigate('clientes-vehiculos')}
+              >
+                <Users size={18} />
+                <span>Clientes y Vehículos</span>
+              </button>
+            </>
+          )}
+
+          {/* MENÚ EXCLUSIVO MECÁNICO (MecanicoMisORdenes.png) */}
+          {rol === 'MECANICO' && (
+            <button
+              className={`nav-item ${currentView === 'mecanico-ordenes' ? 'active' : ''}`}
+              onClick={() => onNavigate('mecanico-ordenes')}
+            >
+              <ClipboardList size={18} />
+              <span>Mis órdenes</span>
+            </button>
+          )}
 
           <div style={{ margin: '12px 0', borderTop: '1px solid rgba(255,255,255,0.08)' }} />
 
           <button
-            className={`nav-item ${currentView === 'consulta-cliente' ? 'active' : ''}`}
+            className="nav-item"
             onClick={() => onNavigate('consulta-cliente')}
             title="Abrir vista pública de consulta para clientes (RUT + Patente)"
           >
@@ -58,13 +111,14 @@ export default function Sidebar({ currentView, onNavigate, counts = {} }) {
       </div>
 
       <div className="sidebar-footer">
-        <div className="user-avatar">CM</div>
+        <div className="user-avatar">
+          {usuarioActual?.iniciales || 'CM'}
+        </div>
         <div className="user-info">
-          <div className="user-name">Claudio Muñoz</div>
-          <div className="user-role">Jefe de taller</div>
+          <div className="user-name">{usuarioActual?.nombre || 'Claudio Muñoz'}</div>
+          <div className="user-role">{usuarioActual?.rolLabel || 'Jefe de taller'}</div>
         </div>
       </div>
     </aside>
   );
 }
-

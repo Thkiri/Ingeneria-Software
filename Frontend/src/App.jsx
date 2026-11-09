@@ -5,10 +5,15 @@ import Dashboard from './components/Dashboard';
 import NuevaOT from './components/NuevaOT';
 import DetalleOTModal from './components/DetalleOTModal';
 import ConsultaCliente from './components/ConsultaCliente';
+import LoginTaller, { USUARIOS_DEMO } from './components/LoginTaller';
+import VistaRecepcion from './components/VistaRecepcion';
+import VistaMecanico from './components/VistaMecanico';
+import VistaCobros from './components/VistaCobros';
 import { getOrdenes, getMecanicos } from './services/api';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('consulta-cliente'); // 'consulta-cliente' | 'dashboard' | 'nueva-ot'
+  const [currentView, setCurrentView] = useState('consulta-cliente');
+  const [usuarioActual, setUsuarioActual] = useState(USUARIOS_DEMO.JEFE_TALLER);
   const [ordenes, setOrdenes] = useState([]);
   const [mecanicos, setMecanicos] = useState([]);
   const [selectedOrden, setSelectedOrden] = useState(null);
@@ -41,26 +46,51 @@ export default function App() {
     loadData();
   }, [loadData]);
 
+  const handleLoginSuccess = (perfil) => {
+    setUsuarioActual(perfil);
+    setCurrentView(perfil.vistaInicial);
+    showNotification(`Sesión iniciada como ${perfil.nombre} (${perfil.rolLabel})`);
+  };
+
+  const handleCambiarRolDemo = (nuevoPerfil) => {
+    setUsuarioActual(nuevoPerfil);
+    setCurrentView(nuevoPerfil.vistaInicial);
+    setSelectedOrden(null);
+    showNotification(`Rol cambiado a: ${nuevoPerfil.rolLabel} (${nuevoPerfil.nombre})`);
+  };
+
   const handleOTCreated = (nuevaOT) => {
     showNotification(`¡OT-${String(nuevaOT.numero).padStart(4, '0')} creada exitosamente para la patente ${nuevaOT.vehiculo_detalle?.patente || ''}!`);
     loadData();
-    setCurrentView('dashboard');
+    setCurrentView(usuarioActual.vistaInicial);
   };
 
   const handleStateChanged = (updatedOrden) => {
-    showNotification(`OT-${String(updatedOrden.numero).padStart(4, '0')} actualizada a estado: ${updatedOrden.estado_display}`);
+    showNotification(`OT-${String(updatedOrden.numero).padStart(4, '0')} actualizada.`);
     setSelectedOrden(updatedOrden);
     loadData();
   };
 
+  // 1. Vista Pública para Clientes (Sin Cuenta)
   if (currentView === 'consulta-cliente') {
     return (
       <ConsultaCliente
-        onIrATaller={() => setCurrentView('dashboard')}
+        onIrATaller={() => setCurrentView('login')}
       />
     );
   }
 
+  // 2. Pantalla de Login del Personal (Ingresov2.png)
+  if (currentView === 'login') {
+    return (
+      <LoginTaller
+        onLoginSuccess={handleLoginSuccess}
+        onVolverACliente={() => setCurrentView('consulta-cliente')}
+      />
+    );
+  }
+
+  // 3. Layout Interno del Taller según Rol
   return (
     <div className="app-layout">
       {/* Toast de Notificación Global */}
@@ -86,16 +116,21 @@ export default function App() {
         </div>
       )}
 
-      {/* Barra Lateral Navegación */}
+      {/* Barra Lateral Navegación Dinámica por Rol */}
       <Sidebar
         currentView={currentView}
         onNavigate={(view) => setCurrentView(view)}
-        counts={{ total: ordenes.length }}
+        usuarioActual={usuarioActual}
       />
 
       {/* Área Principal de Contenido */}
       <div className="main-wrapper">
-        <Topbar subtitle="Gestión de Órdenes de Trabajo y Repuestos · Taller Central" />
+        <Topbar
+          subtitle="Gestión de Órdenes de Trabajo y Repuestos"
+          usuarioActual={usuarioActual}
+          onCambiarRolDemo={handleCambiarRolDemo}
+          onLogout={() => setCurrentView('login')}
+        />
 
         <main className="content-container">
           {currentView === 'dashboard' && (
@@ -109,9 +144,33 @@ export default function App() {
             />
           )}
 
+          {(currentView === 'recepcion-inicio' || currentView === 'clientes-vehiculos') && (
+            <VistaRecepcion
+              subView={currentView}
+              ordenes={ordenes}
+              onNuevaOT={() => setCurrentView('nueva-ot')}
+              onSelectOrden={(orden) => setSelectedOrden(orden)}
+            />
+          )}
+
+          {currentView === 'mecanico-ordenes' && (
+            <VistaMecanico
+              ordenes={ordenes}
+              usuarioActual={usuarioActual}
+              onSelectOrden={(orden) => setSelectedOrden(orden)}
+            />
+          )}
+
+          {currentView === 'cobros' && (
+            <VistaCobros
+              ordenes={ordenes}
+              onSelectOrden={(orden) => setSelectedOrden(orden)}
+            />
+          )}
+
           {currentView === 'nueva-ot' && (
             <NuevaOT
-              onCancel={() => setCurrentView('dashboard')}
+              onCancel={() => setCurrentView(usuarioActual.vistaInicial)}
               onSuccess={handleOTCreated}
             />
           )}
@@ -122,6 +181,8 @@ export default function App() {
       {selectedOrden && (
         <DetalleOTModal
           orden={selectedOrden}
+          usuarioActual={usuarioActual}
+          mecanicos={mecanicos}
           onClose={() => setSelectedOrden(null)}
           onStateChanged={handleStateChanged}
         />

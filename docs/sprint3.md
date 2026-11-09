@@ -117,5 +117,10 @@ stateDiagram-v2
   - [x] Componente [`Frontend/src/components/ConsultaCliente.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/ConsultaCliente.jsx) replicando fielmente `ClienteConsultra.png`, `ClienteError.png` y `ClienteResultado.png`.
   - [x] Stepper vertical de 7 estados con fechas reales desde `historial_estados`.
   - [x] Conmutación directa entre el Portal Público y el Taller Interno en [`Frontend/src/App.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/App.jsx) y [`Frontend/src/components/Sidebar.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/Sidebar.jsx).
-- [ ] **Fase 3: Pantallas por Rol y Selector de Modo Demostración.**
+- [x] **Fase 3: Pantallas por Rol y Selector de Modo Demostración.**
+  - [x] Pantalla de Login del personal en [`Frontend/src/components/LoginTaller.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/LoginTaller.jsx) (`Ingresov2.png`, `IngresoERROR.png`) con acceso rápido de demostración (`FluijoDeAccesoPorRol.png`).
+  - [x] Selector de rol en tiempo real en [`Frontend/src/components/Topbar.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/Topbar.jsx) y menús dinámicos en [`Frontend/src/components/Sidebar.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/Sidebar.jsx).
+  - [x] Vista de Recepción en [`Frontend/src/components/VistaRecepcion.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/VistaRecepcion.jsx) con tabla de órdenes (`RecepcionInicio.png`) y directorio maestro-detalle de Clientes y Vehículos (`RecepcionclientesyVEhiculos.png`).
+  - [x] Vista de Mecánico en [`Frontend/src/components/VistaMecanico.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/VistaMecanico.jsx) con KPIs y tarjetas de carga de trabajo asignada (`MecanicoMisORdenes.png`).
+  - [x] Vista de Liquidación y Cobros en [`Frontend/src/components/VistaCobros.jsx`](file:///c:/Users/mateo/Desktop/TecniMotor/Frontend/src/components/VistaCobros.jsx) con estructura oficial de 4 líneas + IVA 19%.
 - [ ] **Fase 4: Detalle de OT con Pestaña de Repuestos, Horas y Calidad.**

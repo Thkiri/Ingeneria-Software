@@ -1,7 +1,13 @@
 import React from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, LogOut } from 'lucide-react';
+import { USUARIOS_DEMO } from './LoginTaller';
 
-export default function Topbar({ subtitle = "Gestión de Órdenes de Trabajo y Repuestos" }) {
+export default function Topbar({
+  subtitle = "Gestión de Órdenes de Trabajo y Repuestos",
+  usuarioActual,
+  onCambiarRolDemo,
+  onLogout,
+}) {
   const today = new Intl.DateTimeFormat('es-CL', {
     weekday: 'long',
     day: 'numeric',
@@ -18,12 +24,55 @@ export default function Topbar({ subtitle = "Gestión de Órdenes de Trabajo y R
       </div>
 
       <div className="topbar-right">
+        {/* Selector de Demostración (FluijoDeAccesoPorRol.png) */}
+        {onCambiarRolDemo && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748B' }}>
+              Cambiar rol (demo):
+            </span>
+            <select
+              value={usuarioActual?.rol || 'JEFE_TALLER'}
+              onChange={(e) => {
+                const nuevoRol = e.target.value;
+                if (USUARIOS_DEMO[nuevoRol]) {
+                  onCambiarRolDemo(USUARIOS_DEMO[nuevoRol]);
+                }
+              }}
+              style={{
+                height: '34px',
+                padding: '0 10px',
+                borderRadius: '6px',
+                border: '1px solid #CBD5E1',
+                background: '#F8FAFC',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#0F172A',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="JEFE_TALLER">Jefe de taller · Claudio Muñoz</option>
+              <option value="RECEPCIONISTA">Recepción · Carolina Pérez</option>
+              <option value="MECANICO">Mecánico · Diego Soto</option>
+            </select>
+          </div>
+        )}
+
         <span className="topbar-date">{formattedDate}</span>
+
         <button className="btn-icon" title="Notificaciones">
           <Bell size={18} />
         </button>
+
+        {onLogout && (
+          <button
+            className="btn-icon"
+            title="Cerrar sesión / Volver a Login"
+            onClick={onLogout}
+          >
+            <LogOut size={18} />
+          </button>
+        )}
       </div>
     </header>
   );
 }
-
