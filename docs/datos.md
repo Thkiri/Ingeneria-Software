@@ -1,252 +1,139 @@
-# TecniMotor — Información del Sistema y Uso Actual
+# TecniMotor Sur Ltda. — Guía Oficial de Uso, Demostración en Vivo y Defensa Técnica
 
 > [!WARNING]
-> **Recordatorio de seguridad:** Eliminar este documento y eliminar el usuario `admin` al finalizar el proyecto o antes de pasar a producción.
+> **Recordatorio para Evaluación 4 (Despliegue en Producción):** Eliminar este documento o deshabilitar el conmutador de Modo Demostración y el superusuario `admin` antes de pasar a un servidor público.
 
 ---
 
-## 🔑 Credenciales de Acceso (Entorno de Desarrollo)
+## 1. Inicio Rápido (1 Clic)
 
-### Superusuario (Administrador Principal)
-- **Usuario:** `admin`
-- **Contraseña:** `admin123`
-- **Panel de administración:** [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)
+En la raíz del proyecto, haz doble clic en:
+* **[`iniciar aplicacion.bat`](file:///c:/Users/mateo/Desktop/TecniMotor/iniciar%20aplicacion.bat)**
 
-### Usuarios Mecánicos de Prueba
-- **Mecánico 1:** `mecanico1` / `mecanico123` (Carlos Reyes)
-- **Mecánico 2:** `mecanico2` / `mecanico123` (Pedro Soto)
-
----
-
-## 🚀 Guía de Uso Rápido
-
-### Método Recomendado (Un solo clic)
-En la raíz del proyecto, simplemente haz doble clic en:
-* **`iniciar aplicacion.bat`**  
-*(Activa automáticamente el entorno virtual, levanta el servidor y abre el navegador en el panel administrativo).*
+Esto levanta automáticamente dos consolas y abre el navegador:
+1. **Frontend React + Vite:** `http://localhost:5173/` *(Vista principal de demostración)*
+2. **Backend API REST Django:** `http://127.0.0.1:8000/api/`
+3. **Admin Técnico Django:** `http://127.0.0.1:8000/admin/`
 
 ---
 
-### Método Manual por Consola (PowerShell)
-Si prefieres iniciar manualmente desde la terminal:
+## 2. Credenciales de Acceso y Perfiles Activos
 
-```powershell
-# 1. Desde la raíz, activar entorno virtual
-.\.venv\Scripts\Activate.ps1
+### A. Acceso Rápido en Pantalla de Login / Barra Superior (Modo Demostración)
+En la pantalla de ingreso al taller (`Ingresar al taller`) o desde el selector superior derecho del **Topbar**, puedes cambiar en tiempo real entre los 4 usuarios reales del taller sin perder tiempo digitando claves:
 
-# 2. Entrar a la carpeta Backend
-cd Backend
+| Rol en el Taller | Nombre | Usuario | Contraseña | Responsabilidad Principal |
+| :--- | :--- | :--- | :--- | :--- |
+| **Jefe de Taller** | Claudio Muñoz | `claudio.munoz` | `taller2026` | Kanban global, asigna mecánicos, aprueba Calidad, Cobros, Cancela OTs y autoriza Garantías. |
+| **Recepcionista** | Carolina Pérez | `carolina.perez` | `taller2026` | Crea Clientes/Vehículos/OTs, registra aprobación de presupuesto, notifica retiro por teléfono y entrega el auto. |
+| **Mecánico 1** | Diego Soto | `diego.soto` | `taller2026` | Frenos y Suspensión ($15.000/h). Registra diagnóstico, repuestos y horas hombre en sus OTs. |
+| **Mecánico 2** | Felipe Vargas | `felipe.vargas` | `taller2026` | Motor y Transmisión ($18.000/h). Registra diagnóstico, repuestos y horas hombre en sus OTs. |
+| **Superusuario** | Administrador | `admin` | `admin123` | Gestión técnica en `http://127.0.0.1:8000/admin/`. |
 
-# 3. Aplicar migraciones pendientes (si las hay)
-python manage.py migrate
-
-# 4. Iniciar servidor local
-python manage.py runserver
-```
-Servidor disponible en: `http://127.0.0.1:8000/` *(redirige automáticamente al panel admin)*.
-
-> **Nota sobre datos de prueba:** La base de datos `db.sqlite3` ya viene precargada con clientes, vehículos y órdenes de prueba para el Sprint 1. No se requiere ningún script adicional para poblar datos.
+### B. Datos de Prueba Rápidos para el Portal Público de Clientes (HU-08)
+Para probar la consulta sin contraseña desde la pantalla inicial:
+* **RUT:** `15.234.567-8` | **Patente:** `GHKL45` *(Toyota Hilux)*
+* **RUT:** `12.345.678-9` | **Patente:** `BBCC12`
 
 ---
 
-## 📖 Guía Operativa de Uso del Sistema (Flujo del Taller)
+## 3. Guion Paso a Paso para Practicar la Demostración (5 a 7 Minutos)
 
-### Paso 1: Recepción del Cliente
-1. Ir a **Clientes** > **Añadir Cliente**.
-2. Ingresar RUT (ej: `12.345.678-9`), Nombre, Apellido y Teléfono de contacto.
-3. *Nota:* También puedes crearlo directamente desde el formulario de vehículos usando el botón verde **`+`** junto al campo *Cliente*.
+Sigue exactamente este orden durante tu presentación para mostrar las **11 Historias de Usuario** de forma fluida y lógica:
 
-### Paso 2: Registro del Vehículo
-1. Ir a **Vehículos** > **Añadir Vehículo**.
-2. Ingresar la Patente (ej: `BBCC12`), Marca, Modelo, Año y Kilometraje actual.
-3. En el campo **Cliente**, buscar y seleccionar al propietario.
+### Acto 1: Portal Público del Cliente — Sin Fricción (HU-08)
+1. Al abrir `http://localhost:5173/`, apareces en el **Portal Público de Consulta**.
+2. Explica: *"El cliente no necesita crear cuenta ni recordar contraseñas. Solo ingresa su RUT y la patente de su vehículo"*.
+3. Primero escribe una patente falsa (ej. `ZZZZ99`) para mostrar el **manejo de errores limpio**.
+4. Luego ingresa un RUT y patente reales (o usa el de la orden que crearás a continuación) para mostrar el **Stepper vertical de 7 estados con fechas reales de auditoría**.
+5. Haz clic arriba a la derecha en **"Ingresar al taller"**.
 
-### Paso 3: Apertura de la Orden de Trabajo (OT)
-1. Ir a **Órdenes de Trabajo** > **Añadir Orden de Trabajo**.
-2. Seleccionar el **Cliente** y su **Vehículo** correspondiente *(el sistema bloquea si se intenta asignar un auto ajeno)*.
-3. El estado inicial se fija por defecto en **`Ingresada (Pendiente de Revisión)`**.
-4. La **Fecha estimada de entrega** se deja vacía al inicio (se programará una vez evaluado el auto).
-5. Asignar opcionalmente el mecánico técnico en **Mecánico asignado**.
-6. Guardar. El sistema generará el correlativo oficial (ej: `OT-0009`) y registrará al creador automáticamente.
+### Acto 2: Rol Recepcionista — Ingreso y CRUD de Clientes (HU-01)
+1. En el Login, selecciona el acceso rápido de **Recepción (Carolina Pérez)**.
+2. Ve en el menú izquierdo a **"Clientes y Vehículos"**:
+   - Muestra el **CRUD de Clientes**: puedes buscar por RUT/patente, **Crear Cliente**, **Editar** su teléfono obligatorio o correo opcional, y **+ Asociar Vehículo** a un cliente existente.
+3. Ve a **"Órdenes"** (o pulsa **"+ Nueva OT"**):
+   - Registra un cliente (destaca que el **Teléfono es obligatorio** por regla de negocio y el correo es opcional) y los datos del vehículo con el motivo de ingreso.
+   - Guarda la orden. Verás que nace automáticamente en estado **`Ingresada`** (`ING`).
 
-### Paso 4: Diagnóstico y Registro de Trabajos
-1. Al comenzar la revisión, cambiar el estado a **`En Diagnóstico`**.
-2. En la ficha de la orden, desplegar la sección **Información Técnica** para registrar:
-   * Diagnóstico inicial del problema.
-   * Repuestos requeridos / insumos.
-   * Trabajos realizados y observaciones.
-3. Programar la **Fecha estimada de entrega**.
+### Acto 3: Rol Jefe de Taller — Asignación y Paso a Diagnóstico (HU-06, HU-11)
+1. En el selector de la barra superior (`Topbar`), cambia al rol **Jefe de Taller (Claudio Muñoz)**.
+2. Muestra el **Dashboard Kanban de 7 columnas** con filtros por mecánico, fecha y buscador en tiempo real.
+3. Abre la tarjeta de la nueva OT en la columna *Ingresada*:
+   - Intenta pasarla a *En Diagnóstico* sin mecánico para mencionar que **la máquina de estados bloquea avanzar sin mecánico asignado**.
+   - En la pestaña **Diagnóstico**, asigna como Mecánico Principal a **Diego Soto** (y muestra que también existe el campo *Segundo Mecánico de Apoyo*), guarda y cámbiala a **`En Diagnóstico`**.
 
-### Paso 5: Ciclo de Reparación y Entrega
-* **Cambio rápido de estado:** Desde la tabla principal de OTs, cambiar el desplegable en la columna *Estado* (`En Reparación` -> `Control de Calidad` -> `Lista para Entregar` -> `Entregada`) y pulsar *Guardar*.
-* **Auditoría:** Al fondo de cada orden se registra automáticamente la fecha, hora y usuario responsable de cada cambio de estado.
+### Acto 4: Rol Mecánico — Diagnóstico, Repuestos y Horas Hombre (HU-02, HU-03, HU-05)
+1. En el Topbar, cambia al rol **Mecánico (Diego Soto)**.
+2. Muestra su vista **"Mis órdenes"**: solo ve las OTs asignadas a él (principio de mínimo privilegio).
+3. Abre la OT en diagnóstico:
+   - En la pestaña **Diagnóstico**, escribe la falla técnica detectada y guarda.
+   - Ve a la pestaña **Repuestos** y agrega una pieza (ej. *Kit de pastillas delanteras*, cantidad `1`, precio `$35.000`). Muestra el modal de confirmación.
+   - Ve a la pestaña **Horas hombre**: muestra que el sistema **prohíbe e impide registrar horas mientras está en Diagnóstico** (porque el diagnóstico ya tiene tarifa fija de $15.000).
+4. Cambia a **Recepción** o **Jefe de Taller**, marca **✓ Cliente Aprobó** el presupuesto (mostrando que si marca *Rechazó*, se bloquea el paso a reparación) y avanza el estado a **`En Reparación`**.
+5. Como **Mecánico**, entra ahora a la pestaña **Horas hombre** y registra `2.5` horas trabajadas. El sistema calcula automáticamente el costo según su tarifa horaria. Pasa la orden a **`Control de Calidad`**.
 
----
-
-## 🎯 Alcance Actual del Sistema (Fase Actual)
-
-El sistema **TecniMotor** es una plataforma web para la gestión integral de operaciones en un taller mecánico automotriz, permitiendo registrar clientes, sus vehículos y dar seguimiento detallado al ciclo de vida de cada servicio mediante Órdenes de Trabajo (OT).
-
-### 1. Módulo de Clientes (`taller.models.Cliente`)
-- Identificación única por RUT chileno (`unique=True`).
-- Datos de contacto: Nombre, Apellido, Teléfono de contacto y Correo electrónico.
-- Relación de 1 a N con Vehículos y Órdenes de Trabajo.
-
-### 2. Módulo de Vehículos (`taller.models.Vehiculo`)
-- Identificación única por Patente (`unique=True`).
-- Ficha técnica básica: Marca, Modelo, Año y Kilometraje actual.
-- Vinculación obligatoria con un Cliente propietario.
-- Búsqueda interactiva y autocompletado en el panel administrativo.
-
-### 3. Módulo de Órdenes de Trabajo (`taller.models.OrdenTrabajo`)
-- **Numeración automática:** Correlativo único (`OT-0001`, `OT-0002`, etc.).
-- **Fechas:** Fecha de ingreso automática y fecha estimada de entrega programable.
-- **Flujo de Estados:**
-  1. `ING` — Ingresada (Pendiente de Revisión)
-  2. `DIA` — En Diagnóstico
-  3. `ESP` — Espera Repuestos
-  4. `REP` — En Reparación
-  5. `CAL` — Control de Calidad
-  6. `LST` — Lista para Entregar
-  7. `ENT` — Entregada
-  8. `CAN` — Cancelada
-- **Edición en línea:** Cambio de estado rápido directamente desde la tabla de listado en el Admin.
-- **Asignación y Trazabilidad:**
-  - `creado_por`: Usuario que registró la OT en el sistema (asignado automáticamente).
-  - `mecanico_asignado`: Técnico asignado para ejecutar las reparaciones.
-- **Detalle Técnico (Sección desplegable):**
-  - Diagnóstico inicial del problema.
-  - Trabajos realizados detallados.
-  - Repuestos requeridos / insumos.
-  - Observaciones y recomendaciones para el cliente.
+### Acto 5: Control de Calidad, Cobro de 4 Líneas y Entrega con Llamada (HU-07, HU-09, HU-10)
+1. Cambia al rol **Jefe de Taller (Claudio Muñoz)** y abre la OT en **`Control de Calidad`**:
+   - Ve a la pestaña exclusiva **Control de calidad**.
+   - Explica: *"Si el jefe rechaza el control, la orden retrocede automáticamente a En Reparación. Si aprueba, pasa directo a Lista para Entrega"*. Pulsa **Aprobar Control de Calidad**.
+2. Ve en el menú lateral a **"Cobros"**:
+   - Selecciona la orden y muestra la **Liquidación Oficial de 4 líneas**:
+     1. Revisión y diagnóstico inicial: `$15.000` (o `$0` si es reingreso por garantía).
+     2. Repuestos utilizados.
+     3. Mano de obra.
+     4. Subtotal neto + **IVA 19%** = **Total a pagar**.
+3. Cambia al rol **Recepción (Carolina Pérez)** y abre la OT que está en **`Lista para Entrega`**:
+   - Muestra el cuadro azul **Aviso telefónico de retiro (HU-09)** con el número obligatorio del cliente y el monto total con IVA a informarle por teléfono.
+   - Haz clic en **"Registrar llamada: Cliente notificado"** (queda guardado en el historial) y finalmente pulsa **"Marcar como Entregada"**.
 
 ---
 
-## 📐 Decisiones de Diseño y Alcance (Sprint 1)
+## 4. Batería de Preguntas Frecuentes de Evaluación (Comisión / Profesor)
 
-1. **Validación de Coherencia Cliente—Vehículo (`OrdenTrabajo.clean`)**:
-   - **Implementación actual:** Se valida a nivel de modelo que el vehículo seleccionado pertenezca obligatoriamente al cliente asignado a la orden, evitando cruces inconsistentes de datos en el panel de administración.
-   - ⚠️ **Recordatorio para futuros sprints:** Cuando se desarrolle un frontend o formulario interactivo avanzado, el cliente debería auto-asignarse o filtrarse dinámicamente al seleccionar el vehículo para evitar doble selección manual.
+*(Practica respondiendo estas preguntas primero sin leer las respuestas; abajo tienes las respuestas técnicas exactas).*
 
-2. **Redirección de la raíz `/` a `/admin/`**:
-   - **Implementación actual:** Dado que el Sprint 1 se enfoca 100% en el CRUD operativo del panel de administración y no cuenta con vistas públicas, la ruta raíz `http://127.0.0.1:8000/` redirige temporalmente (HTTP 302) al `/admin/`.
-   - ⚠️ **Recordatorio para futuros sprints:** Retirar o cambiar esta redirección en `tecnimotor/urls.py` una vez que se implemente la vista pública para clientes (consulta de OTs por RUT o patente).
-
-3. **Mecánicos y Gestión de Accesos**:
-   - **Alcance Sprint 1:** La operación se realiza centralizadamente desde la cuenta `admin`. Los usuarios `mecanico1` y `mecanico2` existen en la base de datos como técnicos asignables en el campo `mecanico_asignado` de las OTs.
-   - ⚠️ **Recordatorio para futuros sprints:** Asignar `is_staff = True` y crear un grupo de permisos exclusivo para mecánicos cuando se aborde el sprint de roles y accesos independientes.
-
-4. **Base de Datos y Pruebas Manuales**:
-   - **Alcance Sprint 1:** Se mantiene la base de datos `db.sqlite3` en el repositorio con datos de prueba mínimos (clientes, autos y OTs) para facilitar el testeo manual visual e interactivo de todo el flujo de trabajo sin requerir fixtures adicionales.
-   - ⚠️ **Recordatorio para futuros sprints:** Desversionar `db.sqlite3` en `.gitignore` antes de pasar a fases de pre-producción o producción.
+1. **¿Por qué el cliente consulta solo con RUT y Patente en lugar de tener un usuario y contraseña propios?**
+2. **¿Cómo garantizan que un mecánico o recepcionista no pueda cancelar una orden o saltarse etapas del flujo?**
+3. **¿Por qué prohibieron registrar horas hombre durante la etapa de Diagnóstico?**
+4. **¿Qué ocurre en el sistema si un vehículo ya entregado vuelve a los pocos días porque el arreglo quedó mal hecho (Garantía)?**
+5. **¿Por qué decidieron hacer la notificación al cliente mediante registro de llamada telefónica en Recepción y obligar el campo teléfono en lugar de solo correo?**
+6. **En su informe de avance plantearon MySQL 8.0 en el Diagrama de Despliegue, pero aquí están ejecutando SQLite local. ¿Cómo se conectan ambos mundos?**
+7. **¿Cómo se calcula el cobro final y cómo evitan errores de descuadre entre repuestos y mano de obra?**
+8. **¿Qué pasa si un cliente rechaza el presupuesto después de que el mecánico revisó el auto?**
+9. **¿Cómo aplicaron el estándar de calidad ISO/IEC 25010 en el código que estamos viendo?**
+10. **¿Por qué hay un selector de roles arriba en la barra si en producción cada trabajador tiene su cuenta?**
 
 ---
 
-## 🌐 API RESTful JSON (Sprint 2 - Backend Activo)
+## 5. Respuestas Técnicas a las Preguntas (Solucionario de Defensa)
 
-La API JSON ha sido habilitada mediante **Django REST Framework** y **django-cors-headers** para ser consumida por el Frontend de React (puerto 5173).
+### Respuesta 1 (Consulta Pública sin Fricción - HU-08)
+> *"Aplicamos criterios de **Usabilidad (ISO/IEC 25010)**. En las encuestas del levantamiento de requerimientos detectamos que los clientes llamaban por teléfono porque no querían registrarse en portales complejos por una reparación puntual. Al exigir la combinación **RUT del propietario + Patente del vehículo**, validamos la identidad cruzada en el endpoint público (`consulta_publica_cliente`) entregando solo el estado de avance sin exponer datos sensibles ni costos internos."*
 
-### Endpoints Disponibles
+### Respuesta 2 (Máquina de Estados Finitos y RBAC - HU-06)
+> *"Implementamos dos capas de seguridad: primero, **Control de Acceso Basado en Roles (RBAC)** en la interfaz y en los perfiles (`JEFE_TALLER`, `RECEPCIONISTA`, `MECANICO`). Segundo, en el núcleo del modelo `OrdenTrabajo` programamos un diccionario estricto `TRANSICIONES_VALIDAS` y el método `registrar_cambio_estado()`. Ninguna orden puede pasar a 'Lista para Entrega' si no tiene el objeto `ControlCalidad` con `aprobado = True`, y cada transición genera automáticamente un registro inmutable en `HistorialEstadoOT` con fecha, hora y responsable."*
 
-#### 1. Órdenes de Trabajo (`/api/ordenes/`)
-* **`GET /api/ordenes/`**: Listado completo paginado con objetos anidados de cliente, vehículo, mecánico asignado e historial de cambios de estado.
-  * Filtro por estado: `?estado=ING` (valores válidos: `ING`, `DIA`, `ESP`, `REP`, `CAL`, `LST`, `ENT`, `CAN`).
-  * Filtro por cliente: `?cliente=<id>`.
-  * Filtro por vehículo: `?vehiculo=<id>`.
-  * Filtro por mecánico: `?mecanico=<id>`.
-  * Búsqueda general: `?search=<texto>` (busca en número de OT, patente de vehículo, nombre o RUT de cliente).
-* **`POST /api/ordenes/`**: Creación de nueva OT. Valida que el vehículo pertenezca obligatoriamente al cliente.
-* **`GET /api/ordenes/{numero}/`**: Detalle completo de una orden específica.
-* **`PUT / PATCH /api/ordenes/{numero}/`**: Actualización total o parcial de campos técnicos.
-* **`POST /api/ordenes/{numero}/cambiar-estado/`**: Transición de estado con auditoría automática.
-  * Payload: `{ "nuevo_estado": "REP", "observacion": "Iniciando cambio de frenos" }`.
+### Respuesta 3 (Bloqueo de Horas en Diagnóstico y Tarifa Base $15.000 - HU-05)
+> *"Por regla de negocio del taller, toda revisión inicial tiene un costo fijo estandarizado de **$15.000 CLP netos**. Si permitiéramos imputar horas hombre durante el diagnóstico, se le cobraría dos veces al cliente por el mismo concepto. Por eso el método `clean()` del modelo `RegistroHoras` y la pestaña del Frontend bloquean cualquier registro de horas hasta que el cliente apruebe el presupuesto y la orden pase a `En Reparación`."*
 
-#### 2. Clientes (`/api/clientes/`)
-* **`GET /api/clientes/`**: Listado de clientes.
-  * Búsqueda: `?search=<texto>` (por RUT, nombre o apellido).
-* **`POST /api/clientes/`**: Creación de nuevo cliente con validación de formato RUT chileno.
+### Respuesta 4 (Reingreso por Garantía)
+> *"Cuando una orden está en estado `Entregada`, el Jefe de Taller dispone de la acción exclusiva **Autorizar Reingreso por Garantía**. Esta acción reabre la orden hacia `En Diagnóstico`, marca `reingresado_por_garantia = True` y fuerza automáticamente a nivel de modelo que `costo_diagnostico = $0`, de modo que el cliente no vuelve a pagar por el diagnóstico de una falla atribuible al taller."*
 
-#### 3. Vehículos (`/api/vehiculos/`)
-* **`GET /api/vehiculos/`**: Listado de vehículos con ficha técnica.
-  * Filtro por cliente: `?cliente=<id>` *(permite auto-filtrar vehículos del cliente seleccionado en formularios de React)*.
-  * Búsqueda: `?search=<texto>` (por patente, marca o modelo).
-* **`POST /api/vehiculos/`**: Creación de nuevo vehículo asociado a un cliente.
+### Respuesta 5 (Teléfono Obligatorio y Notificación Telefónica - HU-09)
+> *"En un taller automotriz regional como TecniMotor en Osorno, muchos clientes transportistas o particulares no revisan el correo electrónico con frecuencia, pero el 100% porta teléfono móvil. Por eso fijamos el **teléfono como campo obligatorio (`NOT NULL`)** y el correo como opcional. Al pasar la orden a `Lista para Entrega`, Recepción visualiza la tarjeta de aviso con el teléfono y el monto exacto con IVA, realiza la llamada y registra el evento auditable en el historial de la OT, eliminando además la dependencia de pasarelas SMTP externas que puedan caer o irse a spam."*
 
-#### 4. Mecánicos (`/api/mecanicos/`)
-* **`GET /api/mecanicos/`**: Lista de usuarios técnicos activos para poblar el selector de asignación en los formularios.
+### Respuesta 6 (Persistencia Dual SQLite / MySQL 8.0)
+> *"Implementamos una arquitectura de persistencia dual en `Backend/tecnimotor/settings.py` controlada por variables de entorno (`.env`). Por defecto, para desarrollo ágil y demostraciones sin dependencias de servidor externo, opera sobre SQLite (`db.sqlite3`). Cuando se despliega en el servidor de producción definiendo `DB_ENGINE=mysql`, Django conmuta automáticamente al motor MySQL 8.0 utilizando el esquema relacional definitivo entregado en `docs/tecnimotor_sur_v3.sql`."*
 
----
+### Respuesta 7 (Estructura de Cobro Final - HU-10)
+> *"El modelo `OrdenTrabajo` centraliza el cálculo mediante propiedades deterministas en el backend: suma el costo base de diagnóstico ($15.000 o $0 en garantía), el subtotal de todos los `DetalleRepuesto` (`cantidad × precio_unitario`) y el costo de `RegistroHoras` (`horas × tarifa_hora`). Sobre ese subtotal neto calcula exactamente el **19% de IVA** y expone las 4 líneas desglosadas tanto en la API como en la vista de Cobros."*
 
-### 💻 Frontend SPA (Sprint 2 - React + Vite Habilitado)
+### Respuesta 8 (Rechazo de Presupuesto y Cancelación)
+> *"Si el cliente rechaza el presupuesto informado por Recepción, se marca `presupuesto_aprobado = False`. El sistema bloquea inmediatamente el avance hacia `En Reparación` tanto en el botón del Frontend como en la validación del Backend. En ese escenario, el Jefe de Taller cancela la orden y el cliente solo paga la línea base de diagnóstico inicial ($15.000 + IVA)."*
 
-La interfaz gráfica del taller fue desarrollada con **React 19 + Vite** y consume directamente la API REST de Django.
+### Respuesta 9 (Estándar ISO/IEC 25010 aplicado)
+> *"Se refleja en cuatro pilares del código: **1) Adecuación Funcional:** cobertura del 100% de las 11 Historias de Usuario; **2) Usabilidad:** interfaces separadas y adaptadas a la tarea de cada rol y portal público sin login; **3) Seguridad e Integridad:** validadores de formato RUT chileno y patente, llaves foráneas con `PROTECT` para impedir borrar clientes con órdenes históricas, y segregación de permisos; **4) Mantenibilidad:** separación limpia entre API REST en Django y componentes modulares en React."*
 
-#### Componentes Principales (`Frontend/src/`):
-1. **`components/Dashboard.jsx` (Tablero Kanban de 7 Columnas):**
-   - Replica con precisión matemática el mockup `Dashboard jefe.png`.
-   - 7 columnas ordenadas por estado (`ING`, `DIA`, `ESP`, `REP`, `CAL`, `LST`, `ENT`) con barras de color y contadores automáticos.
-   - Tarjetas de OT con número de orden, patente destacada, modelo de auto, mecánico asignado y badge de color.
-   - Barra de filtros reactiva (búsqueda rápida por patente/RUT/cliente, filtro por mecánico asignado y selector de fecha).
-   - Banner inferior de advertencia para órdenes en espera de repuestos (`ESP`).
-   - Al hacer clic en cualquier tarjeta, se abre el modal de detalle interactivo.
-
-2. **`components/NuevaOT.jsx` (Formulario de Ingreso de Órdenes):**
-   - Replica el diseño de `Nueva OT.png`.
-   - Sección 01 (Datos del cliente): Nombre completo, RUT, Teléfono y Correo.
-   - Sección 02 (Datos del vehículo): Patente, Marca, Modelo, Año, Kilometraje y Motivo de ingreso.
-   - Tarjeta informativa lateral con fecha/hora actual y estado inicial "Ingresada".
-   - Al guardar, busca o crea automáticamente el Cliente y Vehículo en Django sin duplicar, y genera la OT que aparece inmediatamente en la primera columna del Kanban.
-
-3. **`components/DetalleOTModal.jsx` (Detalle y Transición de Estados):**
-   - Replica `Detalles OT.png`.
-   - Línea de tiempo visual del ciclo de vida (7 pasos) con indicadores de avance.
-   - Selector interactivo para cambiar de estado rápidamente con campo de observación opcional.
-   - Pestañas de Diagnóstico, Repuestos requeridos e Historial de auditoría en tiempo real.
-
-4. **`services/api.js`:** Cliente HTTP centralizado que maneja todas las peticiones a `http://127.0.0.1:8000/api/`.
-
-5. **`index.css`:** Sistema de diseño completo con tokens de color (`#0B192C`, `#C34A12`, etc.), tipografía Inter y controles de 48px de altura.
-
----
-
-## 📝 Observaciones Críticas de Arquitectura y Próximas Mejoras (Sprint 3 y 4)
-
-A partir de la revisión técnica del Sprint 2, se establecen las siguientes decisiones de diseño para las fases subsiguientes:
-
-### 1. Sistema de Autenticación, Roles y Vista de Cliente
-* **Personal del taller (Jefe de taller, Recepción, Mecánicos):** Implementar login formal mediante tokens (JWT / Sesión Django) con permisos basados en roles (RBAC). El mecánico dispondrá de una vista simplificada filtrada exclusivamente por sus OTs asignadas.
-* **Acceso de Clientes (Sin fricción):** Los clientes externos no requerirán creación de cuenta ni contraseña. Conforme a `VistaCliente1.png`, accederán mediante una vista pública ingresando únicamente **RUT + Patente** para consultar el estado en tiempo real.
-* **Modo Demostración en Desarrollo:** Incorporar temporalmente en el Sidebar un conmutador rápido de usuario/rol para facilitar las pruebas y presentaciones académicas.
-
-### 2. Máquina de Estados Finitos (Transiciones Válidas)
-* Restringir el cambio libre de estados para impedir regresiones inconsistentes (ej. no permitir que una orden en *Diagnóstico* retroceda a *Ingresada*).
-* Matriz de transiciones permitidas:
-  * `ING (Ingresada)` ➔ `DIA (En Diagnóstico)` | `CAN (Cancelada)`
-  * `DIA (En Diagnóstico)` ➔ `ESP (Espera Repuestos)` | `REP (En Reparación)` | `CAN`
-  * `ESP (Espera Repuestos)` ➔ `REP (En Reparación)` | `CAN`
-  * `REP (En Reparación)` ➔ `CAL (Control de Calidad)`
-  * `CAL (Control de Calidad)` ➔ `LST (Lista para Entrega)` | `REP` (si reprueba control)
-  * `LST (Lista para Entrega)` ➔ `ENT (Entregada)`
-  * `ENT` y `CAN` son estados terminales.
-
-### 3. Edición Técnica en Detalle de OT (Repuestos y Observaciones)
-* El formulario de *Nueva OT* se mantiene enfocado exclusivamente en la recepción (Cliente + Auto + Motivo de falla), ya que en el momento del ingreso aún no se conocen las piezas requeridas.
-* En el *Modal de Detalle*, habilitar un modo de edición para que el mecánico o jefe de taller pueda actualizar el diagnóstico definitivo, los repuestos requeridos y las observaciones durante las etapas de Diagnóstico y Reparación.
-
-### 4. Empaquetado y Distribución
-* La plataforma es nativamente Web (Django REST + React Vite).
-* Es compatible para despliegue en contenedores Docker (`docker-compose`).
-* Puede compilarse a aplicación ejecutable de escritorio de Windows (`.exe`) mediante Electron o Tauri si se requiere instalación local para los equipos del taller.
-
----
-
-## 🔮 Roadmap / Próximas Fases Sugeridas
-
-1. **Vistas Públicas para Clientes:** Consulta en línea del estado de su vehículo ingresando únicamente su RUT o patente.
-2. **Módulo de Presupuestos y Cobros:** Registro de mano de obra y costo de repuestos con cálculo de total y estado de pago.
-3. **Notificaciones Automáticas:** Envío de correo o mensaje (WhatsApp/SMS) cuando la orden cambie a *"Lista para Entregar"*.
-4. **Módulo de Inventario de Repuestos:** Control de stock físico del pañol de repuestos.
-
-https://www.figma.com/design/irL309LqqRsooMsDGQ4KWQ/Sin-t%C3%ADtulo?node-id=0-1&t=tzvy2iWWA97IDwCF-1
-
-recurda que en diagnositco tmabien se pide o cobra por realizarlo aprox 20 mil epsos quiza dejemoslo por ahi
+### Respuesta 10 (Conmutador de Roles en Topbar)
+> *"El selector superior se incluyó específicamente como herramienta de **Modo Demostración e Inspección Académica** (documentado desde el Sprint 2 y 3) para poder evaluar la segregación de vistas de los 4 perfiles en tiempo real durante la defensa sin cerrar e iniciar sesión repetidamente. En el paso a producción (Evaluación 4), ese selector se desactiva por variable de entorno y cada usuario queda restringido únicamente a la sesión de sus credenciales."*

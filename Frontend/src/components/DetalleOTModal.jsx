@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Check, AlertCircle } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import {
   cambiarEstadoOrden,
   notificarClienteOrden,
@@ -13,12 +13,14 @@ import {
   getOrden,
 } from '../services/api';
 
-import DetalleRecepcion from './detalle/DetalleRecepcion';
-import TabDiagnostico from './detalle/TabDiagnostico';
-import TabRepuestos from './detalle/TabRepuestos';
-import ModalAgregarRepuesto from './detalle/ModalAgregarRepuesto';
-import TabHorasHombre from './detalle/TabHorasHombre';
-import TabControlCalidad from './detalle/TabControlCalidad';
+import DetalleRecepcion from './detalle_ot/DetalleRecepcion';
+import ResumenSeguimientoOT from './detalle_ot/ResumenSeguimientoOT';
+import PanelCambioEstadoOT from './detalle_ot/PanelCambioEstadoOT';
+import TabDiagnostico from './detalle_ot/TabDiagnostico';
+import TabRepuestos from './detalle_ot/TabRepuestos';
+import ModalAgregarRepuesto from './detalle_ot/ModalAgregarRepuesto';
+import TabHorasHombre from './detalle_ot/TabHorasHombre';
+import TabControlCalidad from './detalle_ot/TabControlCalidad';
 
 const ESTADOS = [
   { code: 'ING', label: 'Ingresada', badgeClass: 'badge-ing' },
@@ -171,6 +173,30 @@ export default function DetalleOTModal({
       setSuccessMsg('Llamada telefónica registrada en el historial de la OT.');
     } catch (err) {
       setErrorMsg(err.message || 'Error al registrar la notificación telefónica.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReingresoGarantia = async () => {
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      await updateOrden(orden.numero, {
+        reingresado_por_garantia: true,
+        costo_diagnostico: 0,
+      });
+      setEsGarantia(true);
+      const updated = await cambiarEstadoOrden(
+        orden.numero,
+        'DIA',
+        'Reingreso por garantía autorizado por Jefe de Taller (Diagnóstico $0, MO $0)'
+      );
+      onStateChanged(updated);
+      setSuccessMsg('Orden reabierta en Diagnóstico por Garantía (Costo diagnóstico fijado en $0).');
+    } catch (err) {
+      setErrorMsg(err.message || 'No se pudo procesar el reingreso por garantía.');
     } finally {
       setLoading(false);
     }
@@ -398,108 +424,11 @@ export default function DetalleOTModal({
           )}
 
           {rol === 'JEFE_TALLER' && (
-            <>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '16px',
-                background: '#FFFFFF',
-                padding: '18px 22px',
-                borderRadius: '10px',
-                border: '1px solid var(--border-color)'
-              }}>
-                <div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Cliente</div>
-                  <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>
-                    {orden.cliente_detalle?.nombre_completo}
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    {orden.cliente_detalle?.telefono || 'Sin teléfono'} · {orden.cliente_detalle?.email || 'Sin correo'}
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Mecánico asignado</div>
-                  <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>
-                    {orden.mecanico_detalle?.nombre_completo || 'Por asignar'}
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    {orden.mecanico_detalle?.especialidad || 'Mantención y sistema de frenos'}
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Entrega estimada</div>
-                  <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>
-                    {orden.fecha_estimada_entrega || 'Por definir'}
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    Ingreso: {orden.fecha_ingreso}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{
-                background: '#FFFFFF',
-                padding: '18px 22px',
-                borderRadius: '10px',
-                border: '1px solid var(--border-color)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 700 }}>Seguimiento de la OT</span>
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Hora de Chile</span>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
-                  {ESTADOS.map((est, idx) => {
-                    const isPassed = idx < currentStepIndex;
-                    const isCurrent = idx === currentStepIndex;
-
-                    return (
-                      <div key={est.code} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-                        {idx < ESTADOS.length - 1 && (
-                          <div style={{
-                            position: 'absolute',
-                            top: '13px',
-                            left: '50%',
-                            width: '100%',
-                            height: '2px',
-                            background: isPassed ? '#0B192C' : 'var(--border-color)',
-                            zIndex: 1,
-                          }} />
-                        )}
-
-                        <div style={{
-                          width: '26px',
-                          height: '26px',
-                          borderRadius: '50%',
-                          background: isPassed ? '#0B192C' : isCurrent ? 'var(--primary)' : '#F1F5F9',
-                          color: isPassed || isCurrent ? '#FFFFFF' : 'var(--text-muted)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          zIndex: 2,
-                        }}>
-                          {isPassed ? <Check size={13} strokeWidth={3} /> : idx + 1}
-                        </div>
-
-                        <span style={{
-                          fontSize: '11px',
-                          fontWeight: isCurrent ? 700 : 600,
-                          color: isCurrent ? 'var(--primary)' : '#0F172A',
-                          marginTop: '6px',
-                          textAlign: 'center'
-                        }}>
-                          {est.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </>
+            <ResumenSeguimientoOT
+              orden={orden}
+              estados={ESTADOS}
+              currentStepIndex={currentStepIndex}
+            />
           )}
 
           {/* Grilla Principal: Pestañas delegadas + Selector de Estado */}
@@ -613,89 +542,15 @@ export default function DetalleOTModal({
               </div>
             </div>
 
-            <div style={{
-              background: '#FFFFFF',
-              borderRadius: '12px',
-              border: '1px solid var(--border-color)',
-              padding: '22px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            }}>
-              <div>
-                <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A' }}>
-                  Cambiar estado
-                </h4>
-                <p style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                  {rol === 'MECANICO'
-                    ? 'Solo etapas técnicas de la orden.'
-                    : 'Selecciona el nuevo estado para la OT.'}
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
-                {estadosSelector.map((est) => {
-                  const isCurrent = orden.estado === est.code;
-                  const blockedByBudget = est.code === 'REP' && presupuestoAprobado === false;
-                  return (
-                    <button
-                      key={est.code}
-                      type="button"
-                      disabled={loading || isCurrent || blockedByBudget}
-                      onClick={() => handleTransicionEstado(est.code)}
-                      style={{
-                        width: '100%',
-                        padding: '12px 14px',
-                        borderRadius: '8px',
-                        border: isCurrent ? '1px solid #FDBA74' : '1px solid #F1F5F9',
-                        background: isCurrent ? '#FFF7ED' : '#F8FAFC',
-                        color: isCurrent ? '#C2410C' : blockedByBudget ? '#94A3B8' : '#0F172A',
-                        fontWeight: isCurrent ? 700 : 500,
-                        fontSize: '13px',
-                        textAlign: 'left',
-                        cursor: isCurrent || blockedByBudget ? 'not-allowed' : 'pointer',
-                        opacity: blockedByBudget ? 0.6 : 1,
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <span>{est.label}{blockedByBudget ? ' (Presupuesto rechazado)' : ''}</span>
-                      {isCurrent && <Check size={15} color="#C2410C" />}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {rol === 'JEFE_TALLER' && orden.estado !== 'CAN' && orden.estado !== 'ENT' && (
-                <div style={{ paddingTop: '10px', borderTop: '1px solid #F1F5F9' }}>
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => handleTransicionEstado('CAN', 'Orden cancelada por el Jefe de Taller')}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid #FECACA',
-                      background: '#FEF2F2',
-                      color: '#991B1B',
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Cancelar Orden de Trabajo
-                  </button>
-                </div>
-              )}
-
-              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
-                {rol === 'MECANICO'
-                  ? 'La entrega al cliente se registra en Recepción.'
-                  : 'Toda transición queda auditada en el historial.'}
-              </div>
-            </div>
+            <PanelCambioEstadoOT
+              rol={rol}
+              orden={orden}
+              estadosSelector={estadosSelector}
+              loading={loading}
+              presupuestoAprobado={presupuestoAprobado}
+              onTransicionEstado={handleTransicionEstado}
+              onReingresoGarantia={handleReingresoGarantia}
+            />
           </div>
         </div>
       </div>

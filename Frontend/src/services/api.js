@@ -123,6 +123,19 @@ export async function createCliente(clienteData) {
   });
 }
 
+export async function updateCliente(id, clienteData) {
+  return await apiRequest(`/clientes/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(clienteData),
+  });
+}
+
+export async function deleteCliente(id) {
+  return await apiRequest(`/clientes/${id}/`, {
+    method: 'DELETE',
+  });
+}
+
 // ========================================================
 // Vehículos
 // ========================================================
@@ -141,6 +154,19 @@ export async function createVehiculo(vehiculoData) {
   return await apiRequest('/vehiculos/', {
     method: 'POST',
     body: JSON.stringify(vehiculoData),
+  });
+}
+
+export async function updateVehiculo(id, vehiculoData) {
+  return await apiRequest(`/vehiculos/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(vehiculoData),
+  });
+}
+
+export async function deleteVehiculo(id) {
+  return await apiRequest(`/vehiculos/${id}/`, {
+    method: 'DELETE',
   });
 }
 

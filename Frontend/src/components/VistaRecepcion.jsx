@@ -1,6 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Plus } from 'lucide-react';
-import { getClientes, getVehiculos } from '../services/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, Plus, Edit3, Trash2, Car } from 'lucide-react';
+import {
+  getClientes,
+  getVehiculos,
+  createCliente,
+  updateCliente,
+  deleteCliente,
+  createVehiculo,
+} from '../services/api';
 
 const BADGE_MAP = {
   ING: { label: 'Ingresada', cls: 'badge-ing' },
@@ -24,20 +31,45 @@ export default function VistaRecepcion({
   const [clientes, setClientes] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
   const [clienteActivoId, setClienteActivoId] = useState(null);
+  const [crudMsg, setCrudMsg] = useState(null);
+  const [showNuevoCliente, setShowNuevoCliente] = useState(false);
+  const [editandoCliente, setEditandoCliente] = useState(false);
+  const [showNuevoVehiculo, setShowNuevoVehiculo] = useState(false);
+
+  const [formCliente, setFormCliente] = useState({
+    rut: '',
+    nombre: '',
+    apellido: '',
+    telefono: '',
+    email: '',
+  });
+
+  const [formVehiculo, setFormVehiculo] = useState({
+    patente: '',
+    marca: '',
+    modelo: '',
+    anio: new Date().getFullYear(),
+    kilometraje: 0,
+  });
+
+  const recargarDirectorio = useCallback(async () => {
+    try {
+      const [clientesData, vehiculosData] = await Promise.all([getClientes(), getVehiculos()]);
+      setClientes(clientesData);
+      setVehiculos(vehiculosData);
+      if (clientesData.length > 0 && !clienteActivoId) {
+        setClienteActivoId(clientesData[0].id);
+      }
+    } catch (err) {
+      console.error('Error cargando directorio:', err);
+    }
+  }, [clienteActivoId]);
 
   useEffect(() => {
     if (subView === 'clientes-vehiculos') {
-      Promise.all([getClientes(), getVehiculos()])
-        .then(([clientesData, vehiculosData]) => {
-          setClientes(clientesData);
-          setVehiculos(vehiculosData);
-          if (clientesData.length > 0 && !clienteActivoId) {
-            setClienteActivoId(clientesData[0].id);
-          }
-        })
-        .catch((err) => console.error('Error cargando directorio:', err));
+      recargarDirectorio();
     }
-  }, [subView, clienteActivoId]);
+  }, [subView, recargarDirectorio]);
 
   // =========================================================
   // SUB-VISTA 1: INICIO DE RECEPCIÓN (RecepcionInicio.png)
@@ -209,6 +241,100 @@ export default function VistaRecepcion({
     ? vehiculos.filter((v) => v.cliente === clienteSeleccionado.id)
     : [];
 
+  const handleCrearCliente = async (e) => {
+    e.preventDefault();
+    setCrudMsg(null);
+    try {
+      const creado = await createCliente({
+        rut: formCliente.rut.trim(),
+        nombre: formCliente.nombre.trim(),
+        apellido: formCliente.apellido.trim(),
+        telefono: formCliente.telefono.trim(),
+        email: formCliente.email.trim(),
+      });
+      await recargarDirectorio();
+      setClienteActivoId(creado.id);
+      setShowNuevoCliente(false);
+      setFormCliente({ rut: '', nombre: '', apellido: '', telefono: '', email: '' });
+      setCrudMsg({ type: 'ok', text: `Cliente ${creado.nombre_completo} registrado exitosamente.` });
+    } catch (err) {
+      setCrudMsg({ type: 'error', text: err.message || 'Error al crear el cliente.' });
+    }
+  };
+
+  const handleIniciarEdicionCliente = () => {
+    if (!clienteSeleccionado) return;
+    setFormCliente({
+      rut: clienteSeleccionado.rut || '',
+      nombre: clienteSeleccionado.nombre || '',
+      apellido: clienteSeleccionado.apellido || '',
+      telefono: clienteSeleccionado.telefono || '',
+      email: clienteSeleccionado.email || '',
+    });
+    setEditandoCliente(true);
+    setShowNuevoCliente(false);
+    setCrudMsg(null);
+  };
+
+  const handleGuardarEdicionCliente = async (e) => {
+    e.preventDefault();
+    if (!clienteSeleccionado) return;
+    setCrudMsg(null);
+    try {
+      await updateCliente(clienteSeleccionado.id, {
+        rut: formCliente.rut.trim(),
+        nombre: formCliente.nombre.trim(),
+        apellido: formCliente.apellido.trim(),
+        telefono: formCliente.telefono.trim(),
+        email: formCliente.email.trim(),
+      });
+      await recargarDirectorio();
+      setEditandoCliente(false);
+      setCrudMsg({ type: 'ok', text: 'Datos del cliente actualizados correctamente.' });
+    } catch (err) {
+      setCrudMsg({ type: 'error', text: err.message || 'Error al actualizar el cliente.' });
+    }
+  };
+
+  const handleEliminarCliente = async () => {
+    if (!clienteSeleccionado) return;
+    if (!window.confirm(`¿Eliminar al cliente ${clienteSeleccionado.nombre_completo}?`)) return;
+    setCrudMsg(null);
+    try {
+      await deleteCliente(clienteSeleccionado.id);
+      setClienteActivoId(null);
+      await recargarDirectorio();
+      setCrudMsg({ type: 'ok', text: 'Cliente eliminado del directorio.' });
+    } catch (err) {
+      setCrudMsg({
+        type: 'error',
+        text: 'No se puede eliminar un cliente con Órdenes de Trabajo históricas asociadas (integridad referencial).',
+      });
+    }
+  };
+
+  const handleCrearVehiculoParaCliente = async (e) => {
+    e.preventDefault();
+    if (!clienteSeleccionado) return;
+    setCrudMsg(null);
+    try {
+      await createVehiculo({
+        patente: formVehiculo.patente.trim().toUpperCase(),
+        marca: formVehiculo.marca.trim(),
+        modelo: formVehiculo.modelo.trim(),
+        anio: Number(formVehiculo.anio) || new Date().getFullYear(),
+        kilometraje: Number(formVehiculo.kilometraje) || 0,
+        cliente: clienteSeleccionado.id,
+      });
+      await recargarDirectorio();
+      setShowNuevoVehiculo(false);
+      setFormVehiculo({ patente: '', marca: '', modelo: '', anio: new Date().getFullYear(), kilometraje: 0 });
+      setCrudMsg({ type: 'ok', text: 'Vehículo asociado exitosamente al cliente.' });
+    } catch (err) {
+      setCrudMsg({ type: 'error', text: err.message || 'Error al registrar el vehículo.' });
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div>
@@ -216,16 +342,30 @@ export default function VistaRecepcion({
           Clientes y Vehículos
         </h2>
         <p style={{ fontSize: '14px', color: '#64748B', marginTop: '4px' }}>
-          Busca una persona y revisa los vehículos asociados a su ficha.
+          Directorio maestro de clientes (CRUD completo) y flota de vehículos asociados.
         </p>
       </div>
+
+      {crudMsg && (
+        <div style={{
+          padding: '12px 16px',
+          borderRadius: '8px',
+          fontSize: '13px',
+          fontWeight: 600,
+          background: crudMsg.type === 'error' ? '#FEF2F2' : '#ECFDF5',
+          border: crudMsg.type === 'error' ? '1px solid #FECACA' : '1px solid #A7F3D0',
+          color: crudMsg.type === 'error' ? '#991B1B' : '#065F46',
+        }}>
+          {crudMsg.text}
+        </div>
+      )}
 
       {/* Buscador */}
       <div>
         <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px', display: 'block' }}>
           Buscar cliente o vehículo
         </label>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '16px', alignItems: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '12px', alignItems: 'center' }}>
           <div className="search-input-wrapper">
             <Search size={18} />
             <input
@@ -238,14 +378,68 @@ export default function VistaRecepcion({
           </div>
 
           <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              setShowNuevoCliente(!showNuevoCliente);
+              setEditandoCliente(false);
+              setFormCliente({ rut: '', nombre: '', apellido: '', telefono: '', email: '' });
+            }}
+            style={{ height: '48px', padding: '0 16px', fontWeight: 600 }}
+          >
+            <Plus size={16} />
+            <span>{showNuevoCliente ? 'Cancelar' : 'Crear Cliente'}</span>
+          </button>
+
+          <button
             className="btn-primary"
             onClick={onNuevaOT}
-            style={{ minWidth: '180px', justifyContent: 'center' }}
+            style={{ minWidth: '170px', justifyContent: 'center' }}
           >
-            <span>Nuevo cliente / OT</span>
+            <span>Nueva OT completa</span>
           </button>
         </div>
       </div>
+
+      {showNuevoCliente && (
+        <form
+          onSubmit={handleCrearCliente}
+          style={{
+            background: '#FFFFFF',
+            borderRadius: '12px',
+            border: '1px solid #BFDBFE',
+            padding: '20px 24px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(5, 1fr) auto',
+            gap: '12px',
+            alignItems: 'end',
+          }}
+        >
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>RUT *</label>
+            <input className="input-control" placeholder="12.345.678-9" required value={formCliente.rut} onChange={(e) => setFormCliente({ ...formCliente, rut: e.target.value })} />
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Nombre *</label>
+            <input className="input-control" placeholder="Juan" required value={formCliente.nombre} onChange={(e) => setFormCliente({ ...formCliente, nombre: e.target.value })} />
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Apellido *</label>
+            <input className="input-control" placeholder="Pérez" required value={formCliente.apellido} onChange={(e) => setFormCliente({ ...formCliente, apellido: e.target.value })} />
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Teléfono (Obligatorio) *</label>
+            <input className="input-control" placeholder="+56912345678" required value={formCliente.telefono} onChange={(e) => setFormCliente({ ...formCliente, telefono: e.target.value })} />
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Correo (Opcional)</label>
+            <input type="email" className="input-control" placeholder="correo@ejemplo.cl" value={formCliente.email} onChange={(e) => setFormCliente({ ...formCliente, email: e.target.value })} />
+          </div>
+          <button type="submit" className="btn-primary" style={{ height: '48px', padding: '0 18px' }}>
+            Guardar
+          </button>
+        </form>
+      )}
 
       {/* Layout Maestro-Detalle */}
       <div style={{
@@ -303,29 +497,139 @@ export default function VistaRecepcion({
         }}>
           {clienteSeleccionado ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <div>
-                <h3 style={{ fontSize: '22px', fontWeight: 700, color: '#0F172A' }}>
-                  {clienteSeleccionado.nombre_completo}
-                </h3>
-                <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>
-                  RUT {clienteSeleccionado.rut}
-                </p>
-              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                <div>
+                  <h3 style={{ fontSize: '22px', fontWeight: 700, color: '#0F172A' }}>
+                    {clienteSeleccionado.nombre_completo}
+                  </h3>
+                  <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>
+                    RUT {clienteSeleccionado.rut}
+                  </p>
+                </div>
 
-              <div>
-                <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A', marginBottom: '10px' }}>
-                  Datos de contacto
-                </h4>
-                <div style={{ fontSize: '13px', color: '#334155', lineHeight: '1.8' }}>
-                  <div><span style={{ color: '#64748B' }}>Teléfono:</span> {clienteSeleccionado.telefono || 'No registrado'}</div>
-                  <div><span style={{ color: '#64748B' }}>Correo:</span> {clienteSeleccionado.email || 'No registrado'}</div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={handleIniciarEdicionCliente}
+                    style={{ height: '36px', padding: '0 12px', fontSize: '12px', fontWeight: 600 }}
+                  >
+                    <Edit3 size={14} />
+                    <span>Editar</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={handleEliminarCliente}
+                    style={{ height: '36px', padding: '0 12px', fontSize: '12px', color: '#991B1B', borderColor: '#FECACA' }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
 
+              {editandoCliente ? (
+                <form
+                  onSubmit={handleGuardarEdicionCliente}
+                  style={{
+                    background: '#F8FAFC',
+                    padding: '16px',
+                    borderRadius: '10px',
+                    border: '1px solid #CBD5E1',
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '12px',
+                  }}
+                >
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569' }}>Nombre *</label>
+                    <input className="input-control" required value={formCliente.nombre} onChange={(e) => setFormCliente({ ...formCliente, nombre: e.target.value })} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569' }}>Apellido *</label>
+                    <input className="input-control" required value={formCliente.apellido} onChange={(e) => setFormCliente({ ...formCliente, apellido: e.target.value })} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569' }}>Teléfono (Obligatorio) *</label>
+                    <input className="input-control" required value={formCliente.telefono} onChange={(e) => setFormCliente({ ...formCliente, telefono: e.target.value })} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569' }}>Correo (Opcional)</label>
+                    <input type="email" className="input-control" value={formCliente.email} onChange={(e) => setFormCliente({ ...formCliente, email: e.target.value })} />
+                  </div>
+                  <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                    <button type="button" className="btn-secondary" onClick={() => setEditandoCliente(false)} style={{ height: '36px', padding: '0 12px', fontSize: '12px' }}>
+                      Cancelar
+                    </button>
+                    <button type="submit" className="btn-primary" style={{ height: '36px', padding: '0 14px', fontSize: '12px' }}>
+                      Guardar cambios
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div>
+                  <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A', marginBottom: '10px' }}>
+                    Datos de contacto
+                  </h4>
+                  <div style={{ fontSize: '13px', color: '#334155', lineHeight: '1.8' }}>
+                    <div><span style={{ color: '#64748B' }}>Teléfono (Obligatorio):</span> <strong>{clienteSeleccionado.telefono || 'No registrado'}</strong></div>
+                    <div><span style={{ color: '#64748B' }}>Correo (Opcional):</span> {clienteSeleccionado.email || 'No registrado'}</div>
+                  </div>
+                </div>
+              )}
+
               <div>
-                <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A', marginBottom: '12px' }}>
-                  Vehículos asociados
-                </h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>
+                    Vehículos asociados ({autosDelCliente.length})
+                  </h4>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setShowNuevoVehiculo(!showNuevoVehiculo)}
+                    style={{ height: '32px', padding: '0 10px', fontSize: '12px', fontWeight: 600 }}
+                  >
+                    <Car size={14} />
+                    <span>{showNuevoVehiculo ? 'Cancelar' : '+ Asociar Vehículo'}</span>
+                  </button>
+                </div>
+
+                {showNuevoVehiculo && (
+                  <form
+                    onSubmit={handleCrearVehiculoParaCliente}
+                    style={{
+                      background: '#F8FAFC',
+                      border: '1px solid #BFDBFE',
+                      borderRadius: '10px',
+                      padding: '14px',
+                      marginBottom: '12px',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(4, 1fr) auto',
+                      gap: '10px',
+                      alignItems: 'end',
+                    }}
+                  >
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 600 }}>Patente *</label>
+                      <input className="input-control" placeholder="BBCC12" required value={formVehiculo.patente} onChange={(e) => setFormVehiculo({ ...formVehiculo, patente: e.target.value })} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 600 }}>Marca *</label>
+                      <input className="input-control" placeholder="Toyota" required value={formVehiculo.marca} onChange={(e) => setFormVehiculo({ ...formVehiculo, marca: e.target.value })} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 600 }}>Modelo *</label>
+                      <input className="input-control" placeholder="Hilux" required value={formVehiculo.modelo} onChange={(e) => setFormVehiculo({ ...formVehiculo, modelo: e.target.value })} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 600 }}>Año *</label>
+                      <input type="number" className="input-control" required value={formVehiculo.anio} onChange={(e) => setFormVehiculo({ ...formVehiculo, anio: e.target.value })} />
+                    </div>
+                    <button type="submit" className="btn-primary" style={{ height: '48px', padding: '0 14px', fontSize: '12px' }}>
+                      Añadir
+                    </button>
+                  </form>
+                )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {autosDelCliente.map((auto) => {
