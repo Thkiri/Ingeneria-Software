@@ -34,12 +34,28 @@ export default function PanelCambioEstadoOT({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
         {estadosSelector.map((est) => {
           const isCurrent = orden.estado === est.code;
+          const tieneHoras = (orden.registro_horas || []).length > 0;
+          const calidadAprobada = Boolean(orden.control_calidad?.aprobado);
+
           const blockedByBudget = est.code === 'REP' && presupuestoAprobado === false;
+          const blockedCalSinHoras = est.code === 'CAL' && !tieneHoras;
+          const blockedLst = est.code === 'LST' && (!tieneHoras || !calidadAprobada);
+          const isBlocked = blockedByBudget || blockedCalSinHoras || blockedLst;
+
+          let blockReason = '';
+          if (blockedByBudget) blockReason = ' (Presupuesto rechazado)';
+          else if (blockedCalSinHoras) blockReason = ' (Faltan horas hombre)';
+          else if (blockedLst) {
+            blockReason = !tieneHoras
+              ? ' (Faltan horas hombre)'
+              : ' (Requiere aprobar Control Calidad)';
+          }
+
           return (
             <button
               key={est.code}
               type="button"
-              disabled={loading || isCurrent || blockedByBudget}
+              disabled={loading || isCurrent || isBlocked}
               onClick={() => onTransicionEstado(est.code)}
               style={{
                 width: '100%',
@@ -47,18 +63,18 @@ export default function PanelCambioEstadoOT({
                 borderRadius: '8px',
                 border: isCurrent ? '1px solid #FDBA74' : '1px solid #F1F5F9',
                 background: isCurrent ? '#FFF7ED' : '#F8FAFC',
-                color: isCurrent ? '#C2410C' : blockedByBudget ? '#94A3B8' : '#0F172A',
+                color: isCurrent ? '#C2410C' : isBlocked ? '#94A3B8' : '#0F172A',
                 fontWeight: isCurrent ? 700 : 500,
                 fontSize: '13px',
                 textAlign: 'left',
-                cursor: isCurrent || blockedByBudget ? 'not-allowed' : 'pointer',
-                opacity: blockedByBudget ? 0.6 : 1,
+                cursor: isCurrent || isBlocked ? 'not-allowed' : 'pointer',
+                opacity: isBlocked ? 0.6 : 1,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}
             >
-              <span>{est.label}{blockedByBudget ? ' (Presupuesto rechazado)' : ''}</span>
+              <span>{est.label}{blockReason}</span>
               {isCurrent && <Check size={15} color="#C2410C" />}
             </button>
           );

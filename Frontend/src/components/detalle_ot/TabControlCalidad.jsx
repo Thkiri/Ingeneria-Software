@@ -8,6 +8,8 @@ export default function TabControlCalidad({
   loading,
   onDictamen,
 }) {
+  const tieneHoras = (orden.registro_horas || []).length > 0;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -34,6 +36,20 @@ export default function TabControlCalidad({
         )}
       </div>
 
+      {!tieneHoras && (
+        <div style={{
+          background: '#FFFBEB',
+          border: '1px solid #FDE68A',
+          color: '#92400E',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          fontSize: '13px',
+          fontWeight: 600,
+        }}>
+          ⚠️ Debes registrar al menos una entrada en la pestaña "Horas hombre" antes de aprobar el Control de Calidad.
+        </div>
+      )}
+
       <div>
         <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>
           Observaciones de la inspección final
@@ -58,9 +74,13 @@ export default function TabControlCalidad({
         <button
           type="button"
           className="btn-primary"
-          disabled={loading}
+          disabled={loading || !tieneHoras}
           onClick={() => onDictamen(true)}
-          style={{ background: '#15803D' }}
+          style={{
+            background: '#15803D',
+            opacity: tieneHoras ? 1 : 0.5,
+            cursor: tieneHoras ? 'pointer' : 'not-allowed',
+          }}
         >
           <CheckCircle2 size={18} />
           <span>Aprobar Control de Calidad</span>

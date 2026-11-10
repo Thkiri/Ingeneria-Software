@@ -19,24 +19,18 @@ export default function VistaMecanico({
 }) {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Filtrar órdenes asignadas al mecánico actual (o de demostración si tiene OTs asignadas)
-  const misOrdenesBase = ordenes.filter((o) => {
-    const nombreMec = o.mecanico_detalle?.nombre_completo?.toLowerCase() || '';
-    const userMec = o.mecanico_detalle?.username?.toLowerCase() || '';
-    if (
+  // Filtrar órdenes asignadas exclusivamente al mecánico activo (como principal o apoyo)
+  const ordenesDelMecanico = ordenes.filter((o) => {
+    const userMecPrincipal = o.mecanico_detalle?.username?.toLowerCase() || '';
+    const userMecApoyo = o.segundo_mecanico_detalle?.username?.toLowerCase() || '';
+    const currentUsername = usuarioActual?.username?.toLowerCase() || '';
+
+    return (
       o.mecanico_asignado === usuarioActual?.id ||
       o.segundo_mecanico === usuarioActual?.id ||
-      nombreMec.includes('diego') ||
-      nombreMec.includes('carlos') ||
-      userMec === 'mecanico1'
-    ) {
-      return true;
-    }
-    return false;
+      (currentUsername && (userMecPrincipal === currentUsername || userMecApoyo === currentUsername))
+    );
   });
-
-  // Si en BD de prueba ninguna coincide por ID exacto, mostrar las que tienen mecánico asignado
-  const ordenesDelMecanico = misOrdenesBase.length > 0 ? misOrdenesBase : ordenes.slice(0, 4);
 
   const filtered = ordenesDelMecanico.filter((o) => {
     if (!searchTerm.trim()) return true;

@@ -9,6 +9,7 @@ import LoginTaller, { USUARIOS_DEMO } from './components/LoginTaller';
 import VistaRecepcion from './components/VistaRecepcion';
 import VistaMecanico from './components/VistaMecanico';
 import VistaCobros from './components/VistaCobros';
+import VistaUsuarios from './components/VistaUsuarios';
 import { getOrdenes, getMecanicos } from './services/api';
 
 export default function App() {
@@ -165,6 +166,12 @@ export default function App() {
             <VistaCobros
               ordenes={ordenes}
               onSelectOrden={(orden) => setSelectedOrden(orden)}
+            />
+          )}
+
+          {currentView === 'usuarios' && (
+            <VistaUsuarios
+              onUsuariosChanged={loadData}
             />
           )}
 

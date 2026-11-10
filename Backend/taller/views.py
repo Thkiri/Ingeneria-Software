@@ -22,6 +22,7 @@ from .serializers import (
     OrdenTrabajoSerializer,
     HistorialEstadoOTSerializer,
     UserSimpleSerializer,
+    UsuarioTallerSerializer,
     DetalleRepuestoSerializer,
     RegistroHorasSerializer,
     ControlCalidadSerializer,
@@ -82,6 +83,27 @@ class MecanicoViewSet(viewsets.ReadOnlyModelViewSet):
             is_active=True,
             perfil__rol=PerfilUsuario.Rol.MECANICO
         ).select_related('perfil').order_by('first_name', 'username')
+
+
+class UsuarioTallerViewSet(viewsets.ModelViewSet):
+    """
+    Gestión de personal del taller (Jefe de Taller, Recepcionista, Mecánico).
+    Implementa baja lógica estricta: nunca borra registros físicos de la BD,
+    solo deshabilita la cuenta (is_active = False) para preservar trazabilidad histórica.
+    """
+    serializer_class = UsuarioTallerSerializer
+
+    def get_queryset(self):
+        return User.objects.filter(
+            perfil__isnull=False
+        ).exclude(is_superuser=True).select_related('perfil').order_by('-is_active', 'first_name', 'username')
+
+    def destroy(self, request, *args, **kwargs):
+        usuario = self.get_object()
+        usuario.is_active = False
+        usuario.save(update_fields=['is_active'])
+        serializer = self.get_serializer(usuario)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class DetalleRepuestoViewSet(viewsets.ModelViewSet):
@@ -209,6 +231,8 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
             mensaje = e.messages[0] if hasattr(e, 'messages') else str(e)
             return Response({"error": mensaje}, status=status.HTTP_400_BAD_REQUEST)
 
+        if hasattr(orden, '_prefetched_objects_cache'):
+            orden._prefetched_objects_cache = {}
         serializer = self.get_serializer(orden)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -236,6 +260,8 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
             observacion=detalle_obs[:255],
         )
 
+        if hasattr(orden, '_prefetched_objects_cache'):
+            orden._prefetched_objects_cache = {}
         serializer = self.get_serializer(orden)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -256,15 +282,22 @@ def consulta_publica_cliente(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # Limpiar formato de RUT (quitar puntos) para flexibilizar la búsqueda
+    # Normalizar RUT con y sin puntos para que funcione con cualquier formato ingresado
     rut_limpio = rut.replace('.', '')
+    rut_con_puntos = rut_limpio
+    if '-' in rut_limpio:
+        cuerpo, dv = rut_limpio.split('-', 1)
+        if cuerpo.isdigit() and len(cuerpo) >= 7:
+            rut_con_puntos = f"{int(cuerpo):,}".replace(',', '.') + f"-{dv}"
+
+    patente_limpia = patente.replace('-', '').replace(' ', '')
 
     # Buscar la OT más reciente que coincida con RUT y Patente
     orden = OrdenTrabajo.objects.select_related(
         'cliente', 'vehiculo', 'mecanico_asignado'
     ).prefetch_related('historial_estados').filter(
-        Q(cliente__rut__iexact=rut) | Q(cliente__rut__iexact=rut_limpio),
-        vehiculo__patente__iexact=patente
+        Q(cliente__rut__iexact=rut) | Q(cliente__rut__iexact=rut_limpio) | Q(cliente__rut__iexact=rut_con_puntos),
+        Q(vehiculo__patente__iexact=patente) | Q(vehiculo__patente__iexact=patente_limpia)
     ).order_by('-numero').first()
 
     if not orden:

@@ -31,9 +31,11 @@ En la pantalla de ingreso al taller (`Ingresar al taller`) o desde el selector s
 | **Superusuario** | Administrador | `admin` | `admin123` | Gestión técnica en `http://127.0.0.1:8000/admin/`. |
 
 ### B. Datos de Prueba Rápidos para el Portal Público de Clientes (HU-08)
-Para probar la consulta sin contraseña desde la pantalla inicial:
-* **RUT:** `15.234.567-8` | **Patente:** `GHKL45` *(Toyota Hilux)*
-* **RUT:** `12.345.678-9` | **Patente:** `BBCC12`
+Para probar la consulta sin contraseña desde la pantalla inicial (con o sin puntos en el RUT):
+* **RUT:** `15.234.567-8` | **Patente:** `GHKL45` *(Toyota Hilux 2.8 — Lista para Entrega, `OT-0006`)*
+* **RUT:** `18.432.109-K` | **Patente:** `KLMN34` *(Nissan NP300 Navara — En Reparación, `OT-0004`)*
+* **RUT:** `11.223.344-5` | **Patente:** `XYZW90` *(Ford Ranger XLT — `OT-0005`)*
+* **RUT:** `12.345.678-9` | **Patente:** `BBCC12` *(Suzuki Swift 1.2 — En Diagnóstico, `OT-0002`)*
 
 ---
 

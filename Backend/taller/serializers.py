@@ -53,6 +53,88 @@ class UserSimpleSerializer(serializers.ModelSerializer):
         return float(obj.perfil.tarifa_hora) if hasattr(obj, 'perfil') else 0.0
 
 
+class UsuarioTallerSerializer(serializers.ModelSerializer):
+    """
+    Serializador integral para crear, editar y habilitar/deshabilitar personal del taller
+    (User + PerfilUsuario) con baja lógica (is_active).
+    """
+    nombre_completo = serializers.SerializerMethodField()
+    rut = serializers.CharField( required=False, allow_blank=True, allow_null=True, write_only=True)
+    rol = serializers.ChoiceField(choices=PerfilUsuario.Rol.choices, default=PerfilUsuario.Rol.MECANICO, write_only=True)
+    especialidad = serializers.CharField(required=False, allow_blank=True, default='', write_only=True)
+    tarifa_hora = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, default=0.00, write_only=True)
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'first_name', 'last_name', 'email', 'is_active',
+            'nombre_completo', 'password', 'rut', 'rol', 'especialidad', 'tarifa_hora'
+        ]
+
+    def get_nombre_completo(self, obj):
+        full = f"{obj.first_name} {obj.last_name}".strip()
+        return full if full else obj.username
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        perfil = getattr(instance, 'perfil', None)
+        data['rut'] = perfil.rut if perfil and perfil.rut else ''
+        data['rol'] = perfil.rol if perfil else PerfilUsuario.Rol.MECANICO
+        data['rol_display'] = perfil.get_rol_display() if perfil else 'Mecánico'
+        data['especialidad'] = perfil.especialidad if perfil else ''
+        data['tarifa_hora'] = float(perfil.tarifa_hora) if perfil else 0.0
+        return data
+
+    def create(self, validated_data):
+        rut = validated_data.pop('rut', None) or None
+        rol = validated_data.pop('rol', PerfilUsuario.Rol.MECANICO)
+        especialidad = validated_data.pop('especialidad', '')
+        tarifa_hora = validated_data.pop('tarifa_hora', 0.00)
+        password = validated_data.pop('password', None) or 'taller2026'
+
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
+
+        PerfilUsuario.objects.update_or_create(
+            usuario=user,
+            defaults={
+                'rut': rut.upper().strip() if rut else None,
+                'rol': rol,
+                'especialidad': especialidad.strip(),
+                'tarifa_hora': tarifa_hora,
+            }
+        )
+        return user
+
+    def update(self, instance, validated_data):
+        rut = validated_data.pop('rut', None)
+        rol = validated_data.pop('rol', None)
+        especialidad = validated_data.pop('especialidad', None)
+        tarifa_hora = validated_data.pop('tarifa_hora', None)
+        password = validated_data.pop('password', None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password and password.strip():
+            instance.set_password(password.strip())
+        instance.save()
+
+        perfil, _ = PerfilUsuario.objects.get_or_create(usuario=instance)
+        if rut is not None:
+            perfil.rut = rut.upper().strip() if rut.strip() else None
+        if rol is not None:
+            perfil.rol = rol
+        if especialidad is not None:
+            perfil.especialidad = especialidad.strip()
+        if tarifa_hora is not None:
+            perfil.tarifa_hora = tarifa_hora
+        perfil.save()
+        instance.perfil = perfil
+        return instance
+
+
 class ClienteSerializer(serializers.ModelSerializer):
     """Serializador para el modelo Cliente."""
     nombre_completo = serializers.SerializerMethodField()
@@ -124,6 +206,14 @@ class RegistroHorasSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['fecha']
 
+    def validate(self, attrs):
+        orden = attrs.get('orden') or (self.instance.orden if self.instance else None)
+        if orden and orden.estado in [OrdenTrabajo.Estado.INGRESADA, OrdenTrabajo.Estado.EN_DIAGNOSTICO]:
+            raise serializers.ValidationError(
+                "No se pueden registrar las horas en diagnóstico. Las horas se imputan a partir de 'En Reparación'."
+            )
+        return attrs
+
 
 class ControlCalidadSerializer(serializers.ModelSerializer):
     """Serializador para la inspección y certificación técnica de calidad (HU-07)."""
@@ -136,6 +226,15 @@ class ControlCalidadSerializer(serializers.ModelSerializer):
             'aprobado', 'observaciones', 'fecha'
         ]
         read_only_fields = ['fecha']
+
+    def validate(self, attrs):
+        orden = attrs.get('orden') or (self.instance.orden if self.instance else None)
+        aprobado = attrs.get('aprobado')
+        if aprobado and orden and not orden.registro_horas.exists():
+            raise serializers.ValidationError(
+                "No se puede aprobar el Control de Calidad sin que existan Horas Hombre registradas en la orden."
+            )
+        return attrs
 
 
 class OrdenTrabajoSerializer(serializers.ModelSerializer):

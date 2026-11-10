@@ -87,20 +87,6 @@ export default function DetalleOTModal({
     setErrorMsg('');
     setSuccessMsg('');
     try {
-      if (nuevoEstado === 'LST' && rol === 'JEFE_TALLER' && (!orden.control_calidad || !orden.control_calidad.aprobado)) {
-        const payload = {
-          orden: orden.numero,
-          jefe_taller: usuarioActual?.id || 4,
-          aprobado: true,
-          observaciones: obsCalidad.trim() || 'Control de calidad aprobado por Jefe de Taller.',
-        };
-        if (orden.control_calidad?.id) {
-          await updateControlCalidad(orden.control_calidad.id, payload);
-        } else {
-          await createControlCalidad(payload);
-        }
-      }
-
       const updated = await cambiarEstadoOrden(
         orden.numero,
         nuevoEstado,

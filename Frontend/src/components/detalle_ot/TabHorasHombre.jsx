@@ -58,11 +58,19 @@ export default function TabHorasHombre({
               className="input-control"
               style={{ height: '40px', fontSize: '13px' }}
               value={nuevaHora.mecanico}
-              onChange={(e) => setNuevaHora({ ...nuevaHora, mecanico: e.target.value })}
+              onChange={(e) => {
+                const selectedId = e.target.value;
+                const mecObj = mecanicos.find((m) => String(m.id) === String(selectedId));
+                setNuevaHora({
+                  ...nuevaHora,
+                  mecanico: selectedId,
+                  tarifa: mecObj?.tarifa_hora || 15000,
+                });
+              }}
             >
               {mecanicos.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.nombre_completo || m.username}
+                  {m.nombre_completo || m.username} ({formatCLP(m.tarifa_hora || 15000)}/h)
                 </option>
               ))}
             </select>

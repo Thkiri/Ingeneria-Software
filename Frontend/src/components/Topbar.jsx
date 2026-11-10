@@ -31,11 +31,11 @@ export default function Topbar({
               Cambiar rol (demo):
             </span>
             <select
-              value={usuarioActual?.rol || 'JEFE_TALLER'}
+              value={usuarioActual?.demoKey || usuarioActual?.rol || 'JEFE_TALLER'}
               onChange={(e) => {
-                const nuevoRol = e.target.value;
-                if (USUARIOS_DEMO[nuevoRol]) {
-                  onCambiarRolDemo(USUARIOS_DEMO[nuevoRol]);
+                const nuevoRolKey = e.target.value;
+                if (USUARIOS_DEMO[nuevoRolKey]) {
+                  onCambiarRolDemo(USUARIOS_DEMO[nuevoRolKey]);
                 }
               }}
               style={{
@@ -53,6 +53,7 @@ export default function Topbar({
               <option value="JEFE_TALLER">Jefe de taller · Claudio Muñoz</option>
               <option value="RECEPCIONISTA">Recepción · Carolina Pérez</option>
               <option value="MECANICO">Mecánico · Diego Soto</option>
+              <option value="MECANICO_FELIPE">Mecánico · Felipe Vargas</option>
             </select>
           </div>
         )}

@@ -18,15 +18,97 @@ export default function NuevaOT({ onCancel, onSuccess }) {
   });
 
   const [mecanicos, setMecanicos] = useState([]);
+  const [clientesList, setClientesList] = useState([]);
+  const [vehiculosList, setVehiculosList] = useState([]);
+  const [clienteExistenteId, setClienteExistenteId] = useState('');
+  const [vehiculoExistenteId, setVehiculoExistenteId] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    // Cargar mecánicos disponibles
-    getMecanicos()
-      .then(data => setMecanicos(data))
-      .catch(err => console.error('Error cargando mecánicos:', err));
+    Promise.all([getMecanicos(), getClientes(), getVehiculos()])
+      .then(([mecanicosData, clientesData, vehiculosData]) => {
+        setMecanicos(mecanicosData);
+        setClientesList(clientesData);
+        setVehiculosList(vehiculosData);
+      })
+      .catch(err => console.error('Error cargando catálogos en Nueva OT:', err));
   }, []);
+
+  const handleSelectClienteExistente = (e) => {
+    const id = e.target.value;
+    setClienteExistenteId(id);
+    setVehiculoExistenteId('');
+    if (!id) {
+      setFormData(prev => ({
+        ...prev,
+        nombreCompleto: '',
+        rut: '',
+        telefono: '',
+        email: '',
+      }));
+      return;
+    }
+    const cli = clientesList.find(c => String(c.id) === String(id));
+    if (cli) {
+      const autosCli = vehiculosList.filter(v => v.cliente === cli.id);
+      const primerAuto = autosCli[0] || null;
+      setFormData(prev => ({
+        ...prev,
+        nombreCompleto: cli.nombre_completo || `${cli.nombre} ${cli.apellido}`.trim(),
+        rut: cli.rut || '',
+        telefono: cli.telefono || '',
+        email: cli.email || '',
+        ...(primerAuto ? {
+          patente: primerAuto.patente,
+          marca: primerAuto.marca,
+          modelo: primerAuto.modelo,
+          anio: primerAuto.anio,
+          kilometraje: primerAuto.kilometraje || 0,
+        } : {}),
+      }));
+      if (primerAuto) {
+        setVehiculoExistenteId(String(primerAuto.id));
+      }
+    }
+  };
+
+  const handleSelectVehiculoExistente = (e) => {
+    const id = e.target.value;
+    setVehiculoExistenteId(id);
+    if (!id) {
+      setFormData(prev => ({
+        ...prev,
+        patente: '',
+        marca: '',
+        modelo: '',
+        anio: new Date().getFullYear(),
+        kilometraje: '',
+      }));
+      return;
+    }
+    const veh = vehiculosList.find(v => String(v.id) === String(id));
+    if (veh) {
+      const dueno = clientesList.find(c => c.id === veh.cliente);
+      if (dueno && !clienteExistenteId) {
+        setClienteExistenteId(String(dueno.id));
+      }
+      setFormData(prev => ({
+        ...prev,
+        patente: veh.patente || '',
+        marca: veh.marca || '',
+        modelo: veh.modelo || '',
+        anio: veh.anio || new Date().getFullYear(),
+        kilometraje: veh.kilometraje ?? 0,
+        ...(dueno ? {
+          nombreCompleto: dueno.nombre_completo || `${dueno.nombre} ${dueno.apellido}`.trim(),
+          rut: dueno.rut || '',
+          telefono: dueno.telefono || '',
+          email: dueno.email || '',
+        } : {}),
+      }));
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -161,6 +243,25 @@ export default function NuevaOT({ onCancel, onSuccess }) {
                 <span>Datos del cliente</span>
               </div>
 
+              <div className="form-group" style={{ marginBottom: '16px', background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#1E3A8A' }}>
+                  Cliente registrado o nuevo ingreso
+                </label>
+                <select
+                  className="input-control"
+                  value={clienteExistenteId}
+                  onChange={handleSelectClienteExistente}
+                  style={{ marginTop: '6px' }}
+                >
+                  <option value="">+ Registrar un cliente nuevo en los campos de abajo</option>
+                  {clientesList.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre_completo} · RUT {c.rut} · Tel: {c.telefono}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="form-row">
                 <div className="form-group">
                   <label>Nombre completo *</label>
@@ -222,6 +323,28 @@ export default function NuevaOT({ onCancel, onSuccess }) {
               <div className="form-section-title">
                 <span className="form-section-number">02</span>
                 <span>Datos del vehículo</span>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '16px', background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#1E3A8A' }}>
+                  Vehículo registrado o nuevo vehículo
+                </label>
+                <select
+                  className="input-control"
+                  value={vehiculoExistenteId}
+                  onChange={handleSelectVehiculoExistente}
+                  style={{ marginTop: '6px' }}
+                >
+                  <option value="">+ Registrar un vehículo nuevo en los campos de abajo</option>
+                  {(clienteExistenteId
+                    ? vehiculosList.filter((v) => String(v.cliente) === String(clienteExistenteId))
+                    : vehiculosList
+                  ).map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.patente} — {v.marca} {v.modelo} ({v.anio}) · {v.cliente_detalle?.nombre_completo}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-row">

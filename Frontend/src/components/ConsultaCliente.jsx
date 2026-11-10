@@ -179,7 +179,7 @@ export default function ConsultaCliente({ onIrATaller }) {
                 <input
                   type="text"
                   className="input-control"
-                  placeholder="Ej.: 12.155.555-9"
+                  placeholder="Ej.: 15.234.567-8"
                   value={rut}
                   onChange={(e) => setRut(e.target.value)}
                 />
@@ -192,7 +192,7 @@ export default function ConsultaCliente({ onIrATaller }) {
                 <input
                   type="text"
                   className="input-control"
-                  placeholder="Ej.: SDSD32"
+                  placeholder="Ej.: GHKL45"
                   value={patente}
                   onChange={(e) => setPatente(e.target.value.toUpperCase())}
                 />
@@ -244,43 +244,78 @@ export default function ConsultaCliente({ onIrATaller }) {
               paddingTop: '16px',
               borderTop: '1px dashed var(--border-color)',
               fontSize: '12px',
-              color: '#64748B'
+              color: '#64748B',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
             }}>
-              <span style={{ fontWeight: 600 }}>Datos de prueba rápida (Demo): </span>
-              <button
-                type="button"
-                onClick={() => cargarEjemploDemo('12.155.555-9', 'SDSD32')}
-                style={{
-                  background: '#F1F5F9',
-                  border: '1px solid #CBD5E1',
-                  borderRadius: '4px',
-                  padding: '2px 8px',
-                  fontSize: '11px',
-                  cursor: 'pointer',
-                  marginLeft: '6px',
-                  color: '#0F172A',
-                  fontWeight: 500
-                }}
-              >
-                12.155.555-9 / SDSD32
-              </button>
-              <button
-                type="button"
-                onClick={() => cargarEjemploDemo('18.305.890-K', 'PJTG12')}
-                style={{
-                  background: '#F1F5F9',
-                  border: '1px solid #CBD5E1',
-                  borderRadius: '4px',
-                  padding: '2px 8px',
-                  fontSize: '11px',
-                  cursor: 'pointer',
-                  marginLeft: '6px',
-                  color: '#0F172A',
-                  fontWeight: 500
-                }}
-              >
-                18.305.890-K / PJTG12
-              </button>
+              <span style={{ fontWeight: 600 }}>Datos de prueba rápida (Demo):</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => cargarEjemploDemo('15.234.567-8', 'GHKL45')}
+                  style={{
+                    background: '#F1F5F9',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    color: '#0F172A',
+                    fontWeight: 500
+                  }}
+                >
+                  15.234.567-8 / GHKL45 (Lista Entrega)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => cargarEjemploDemo('18.432.109-K', 'KLMN34')}
+                  style={{
+                    background: '#F1F5F9',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    color: '#0F172A',
+                    fontWeight: 500
+                  }}
+                >
+                  18.432.109-K / KLMN34 (En Reparación)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => cargarEjemploDemo('11.223.344-5', 'XYZW90')}
+                  style={{
+                    background: '#F1F5F9',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    color: '#0F172A',
+                    fontWeight: 500
+                  }}
+                >
+                  11.223.344-5 / XYZW90 (OT-0005)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => cargarEjemploDemo('12.345.678-9', 'BBCC12')}
+                  style={{
+                    background: '#F1F5F9',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    color: '#0F172A',
+                    fontWeight: 500
+                  }}
+                >
+                  12.345.678-9 / BBCC12 (En Diagnóstico)
+                </button>
+              </div>
             </div>
           </div>
         ) : (

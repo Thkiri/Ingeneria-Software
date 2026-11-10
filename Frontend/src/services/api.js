@@ -179,6 +179,25 @@ export async function getMecanicos() {
   return data.results ? data.results : data;
 }
 
+export async function getUsuariosTaller() {
+  const data = await apiRequest('/usuarios/');
+  return data.results ? data.results : data;
+}
+
+export async function createUsuarioTaller(usuarioData) {
+  return await apiRequest('/usuarios/', {
+    method: 'POST',
+    body: JSON.stringify(usuarioData),
+  });
+}
+
+export async function updateUsuarioTaller(id, usuarioData) {
+  return await apiRequest(`/usuarios/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(usuarioData),
+  });
+}
+
 // ========================================================
 // Consulta Pública de Clientes (HU-08 - Sin Fricción)
 // ========================================================

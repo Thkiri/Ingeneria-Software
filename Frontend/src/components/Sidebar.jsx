@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, DollarSign, Wrench, Users, ExternalLink, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, FileText, DollarSign, Wrench, Users, ExternalLink, ClipboardList, ShieldCheck } from 'lucide-react';
 
 export default function Sidebar({ currentView, onNavigate, usuarioActual }) {
   const rol = usuarioActual?.rol || 'JEFE_TALLER';
@@ -53,6 +53,14 @@ export default function Sidebar({ currentView, onNavigate, usuarioActual }) {
               >
                 <DollarSign size={18} />
                 <span>Cobros</span>
+              </button>
+
+              <button
+                className={`nav-item ${currentView === 'usuarios' ? 'active' : ''}`}
+                onClick={() => onNavigate('usuarios')}
+              >
+                <ShieldCheck size={18} />
+                <span>Personal / Usuarios</span>
               </button>
             </>
           )}

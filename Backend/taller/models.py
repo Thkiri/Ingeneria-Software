@@ -241,7 +241,14 @@ class OrdenTrabajo(models.Model):
         if nuevo_estado == self.Estado.EN_REPARACION and self.presupuesto_aprobado is False:
             raise ValidationError("No se puede avanzar a 'En Reparación' con presupuesto rechazado por el cliente.")
 
-        # 6. Certificación de Control de Calidad para LISTA_ENTREGA
+        # 6. Exigir Horas Hombre registradas para CONTROL_CALIDAD y LISTA_ENTREGA (HU-05 / HU-07)
+        if nuevo_estado in [self.Estado.CONTROL_CALIDAD, self.Estado.LISTA]:
+            if not self.registro_horas.exists():
+                raise ValidationError(
+                    "No se puede avanzar sin antes registrar las Horas Hombre trabajadas en la orden."
+                )
+
+        # 7. Certificación de Control de Calidad obligatoria para LISTA_ENTREGA (HU-07)
         if nuevo_estado == self.Estado.LISTA:
             calidad = getattr(self, 'control_calidad', None)
             if not calidad or not calidad.aprobado:

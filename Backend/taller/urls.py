@@ -5,6 +5,7 @@ from .views import (
     VehiculoViewSet,
     OrdenTrabajoViewSet,
     MecanicoViewSet,
+    UsuarioTallerViewSet,
     DetalleRepuestoViewSet,
     RegistroHorasViewSet,
     ControlCalidadViewSet,
@@ -16,6 +17,7 @@ router.register(r'clientes', ClienteViewSet, basename='cliente')
 router.register(r'vehiculos', VehiculoViewSet, basename='vehiculo')
 router.register(r'ordenes', OrdenTrabajoViewSet, basename='ordentrabajo')
 router.register(r'mecanicos', MecanicoViewSet, basename='mecanico')
+router.register(r'usuarios', UsuarioTallerViewSet, basename='usuario')
 router.register(r'repuestos', DetalleRepuestoViewSet, basename='repuesto')
 router.register(r'horas', RegistroHorasViewSet, basename='horas')
 router.register(r'controles-calidad', ControlCalidadViewSet, basename='control-calidad')

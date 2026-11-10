@@ -3,6 +3,7 @@ import { Wrench, ArrowRight, Users } from 'lucide-react';
 
 export const USUARIOS_DEMO = {
   JEFE_TALLER: {
+    demoKey: 'JEFE_TALLER',
     id: 4,
     username: 'claudio.munoz',
     password: 'jefe123',
@@ -13,6 +14,7 @@ export const USUARIOS_DEMO = {
     vistaInicial: 'dashboard',
   },
   RECEPCIONISTA: {
+    demoKey: 'RECEPCIONISTA',
     id: 5,
     username: 'carolina.perez',
     password: 'recepcion123',
@@ -23,6 +25,7 @@ export const USUARIOS_DEMO = {
     vistaInicial: 'recepcion-inicio',
   },
   MECANICO: {
+    demoKey: 'MECANICO',
     id: 6,
     username: 'diego.soto',
     password: 'mecanico123',
@@ -30,8 +33,21 @@ export const USUARIOS_DEMO = {
     iniciales: 'DS',
     rol: 'MECANICO',
     rolLabel: 'Mecánico',
-    especialidad: 'Mantención y sistema de frenos',
+    especialidad: 'Frenos, Suspensión y Tren Delantero',
     tarifa_hora: 15000,
+    vistaInicial: 'mecanico-ordenes',
+  },
+  MECANICO_FELIPE: {
+    demoKey: 'MECANICO_FELIPE',
+    id: 7,
+    username: 'felipe.vargas',
+    password: 'mecanico123',
+    nombre: 'Felipe Vargas',
+    iniciales: 'FV',
+    rol: 'MECANICO',
+    rolLabel: 'Mecánico',
+    especialidad: 'Ajuste de Motor y Transmisión',
+    tarifa_hora: 18000,
     vistaInicial: 'mecanico-ordenes',
   },
 };
@@ -46,19 +62,24 @@ export default function LoginTaller({ onLoginSuccess, onVolverACliente }) {
     const cleanUser = username.trim().toLowerCase();
 
     // Validar contra usuarios configurados o alias comunes
-    if ((cleanUser === 'claudio.munoz' || cleanUser === 'jefe' || cleanUser === 'admin') && (password === 'jefe123' || password === 'admin123')) {
+    if ((cleanUser === 'claudio.munoz' || cleanUser === 'jefe' || cleanUser === 'admin') && (password === 'jefe123' || password === 'admin123' || password === 'taller2026')) {
       setError(false);
       onLoginSuccess(USUARIOS_DEMO.JEFE_TALLER);
       return;
     }
-    if ((cleanUser === 'carolina.perez' || cleanUser === 'recepcion') && password === 'recepcion123') {
+    if ((cleanUser === 'carolina.perez' || cleanUser === 'recepcion') && (password === 'recepcion123' || password === 'taller2026')) {
       setError(false);
       onLoginSuccess(USUARIOS_DEMO.RECEPCIONISTA);
       return;
     }
-    if ((cleanUser === 'diego.soto' || cleanUser === 'mecanico1' || cleanUser === 'mecanico') && password === 'mecanico123') {
+    if ((cleanUser === 'diego.soto' || cleanUser === 'mecanico1' || cleanUser === 'mecanico') && (password === 'mecanico123' || password === 'taller2026')) {
       setError(false);
       onLoginSuccess(USUARIOS_DEMO.MECANICO);
+      return;
+    }
+    if ((cleanUser === 'felipe.vargas' || cleanUser === 'mecanico2') && (password === 'mecanico123' || password === 'taller2026')) {
+      setError(false);
+      onLoginSuccess(USUARIOS_DEMO.MECANICO_FELIPE);
       return;
     }
 
@@ -193,7 +214,7 @@ export default function LoginTaller({ onLoginSuccess, onVolverACliente }) {
             <span>Acceso rápido según rol (Modo Demo Presentación):</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
             <button
               type="button"
               onClick={() => accesoRapidoDemo(USUARIOS_DEMO.JEFE_TALLER)}
@@ -210,7 +231,7 @@ export default function LoginTaller({ onLoginSuccess, onVolverACliente }) {
                 Jefe de taller
               </div>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#0F172A', marginTop: '2px' }}>
-                Dashboard
+                Claudio Muñoz
               </div>
             </button>
 
@@ -230,7 +251,7 @@ export default function LoginTaller({ onLoginSuccess, onVolverACliente }) {
                 Recepción
               </div>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#0F172A', marginTop: '2px' }}>
-                Inicio
+                Carolina Pérez
               </div>
             </button>
 
@@ -247,10 +268,30 @@ export default function LoginTaller({ onLoginSuccess, onVolverACliente }) {
               }}
             >
               <div style={{ fontSize: '10px', fontWeight: 700, color: '#C2410C', textTransform: 'uppercase' }}>
-                Mecánico
+                Mecánico 1
               </div>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#0F172A', marginTop: '2px' }}>
-                Mis órdenes
+                Diego Soto
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => accesoRapidoDemo(USUARIOS_DEMO.MECANICO_FELIPE)}
+              style={{
+                background: '#F8FAFC',
+                border: '1px solid #CBD5E1',
+                borderRadius: '8px',
+                padding: '10px 8px',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <div style={{ fontSize: '10px', fontWeight: 700, color: '#C2410C', textTransform: 'uppercase' }}>
+                Mecánico 2
+              </div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#0F172A', marginTop: '2px' }}>
+                Felipe Vargas
               </div>
             </button>
           </div>
