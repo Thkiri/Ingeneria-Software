@@ -1,5 +1,5 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, Phone, CheckCircle2 } from 'lucide-react';
 
 export default function DetalleRecepcion({
   orden,
@@ -9,11 +9,20 @@ export default function DetalleRecepcion({
   successMsg,
   presupuestoAprobado,
   onRegistrarPresupuesto,
+  onNotificarCliente,
   onEntregarVehiculo,
   onClose,
 }) {
   const repuestosList = orden.repuestos_detalle || [];
   const horasList = orden.registro_horas || [];
+  const historialList = orden.historial_estados || [];
+  const telefonoCliente = orden.cliente_detalle?.telefono || 'Sin teléfono';
+  const emailCliente = orden.cliente_detalle?.email || '';
+  const totalAPagar = Math.round(Number(orden.total_a_pagar || 0)).toLocaleString('es-CL');
+
+  const notificacionPrevia = historialList.find((h) =>
+    (h.observacion || '').toLowerCase().includes('notificación telefónica')
+  );
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -64,7 +73,11 @@ export default function DetalleRecepcion({
               <div style={{ fontSize: '14px', color: '#334155', marginTop: '6px' }}>
                 Cliente: {orden.cliente_detalle?.nombre_completo} · RUT {orden.cliente_detalle?.rut}
               </div>
-              <div style={{ fontSize: '13px', color: '#64748B', marginTop: '6px' }}>
+              <div style={{ fontSize: '13px', color: '#0F172A', fontWeight: 600, marginTop: '6px' }}>
+                Teléfono (Obligatorio): {telefonoCliente}
+                {emailCliente ? ` · Correo: ${emailCliente}` : ' · Correo: No registrado (opcional)'}
+              </div>
+              <div style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>
                 Mecánico: {orden.mecanico_detalle?.nombre_completo || 'Por asignar'} · Ingreso: {orden.fecha_ingreso}
               </div>
             </div>
@@ -168,8 +181,67 @@ export default function DetalleRecepcion({
               gap: '16px'
             }}>
               <h4 style={{ fontSize: '17px', fontWeight: 700, color: '#0F172A' }}>
-                Entrega del vehículo
+                Notificación y Entrega (HU-09)
               </h4>
+
+              <div style={{
+                background: orden.estado === 'LST' ? '#EFF6FF' : '#F8FAFC',
+                border: orden.estado === 'LST' ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
+                borderRadius: '10px',
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#1E3A8A' }}>
+                  <Phone size={15} />
+                  <span>Aviso telefónico de retiro</span>
+                </div>
+                <div style={{ fontSize: '13px', color: '#334155', lineHeight: '1.5' }}>
+                  Llamar a <strong>{orden.cliente_detalle?.nombre_completo}</strong> al{' '}
+                  <a href={`tel:${telefonoCliente}`} style={{ color: '#2563EB', fontWeight: 700, textDecoration: 'none' }}>
+                    {telefonoCliente}
+                  </a>
+                  <div style={{ marginTop: '4px', fontSize: '12px', color: '#475569' }}>
+                    Total liquidado a informar: <strong>${totalAPagar} CLP</strong> (IVA incl.)
+                  </div>
+                </div>
+
+                {notificacionPrevia ? (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: '#DCFCE7',
+                    color: '#166534',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: 600
+                  }}>
+                    <CheckCircle2 size={15} />
+                    <span>Cliente ya notificado telefónicamente</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    disabled={loading || orden.estado !== 'LST'}
+                    onClick={onNotificarCliente}
+                    style={{
+                      width: '100%',
+                      justifyContent: 'center',
+                      height: '38px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      opacity: orden.estado === 'LST' ? 1 : 0.5,
+                      cursor: orden.estado === 'LST' ? 'pointer' : 'not-allowed'
+                    }}
+                  >
+                    Registrar llamada: Cliente notificado
+                  </button>
+                )}
+              </div>
 
               <div style={{ fontSize: '12px', color: '#64748B' }}>
                 Único cambio de estado permitido:

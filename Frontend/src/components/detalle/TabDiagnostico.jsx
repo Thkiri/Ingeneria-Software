@@ -15,6 +15,8 @@ export default function TabDiagnostico({
   setFechaEstimada,
   esGarantia,
   setEsGarantia,
+  presupuestoAprobado,
+  onRegistrarPresupuesto,
   loading,
   onSave,
 }) {
@@ -131,6 +133,51 @@ export default function TabDiagnostico({
               />
               <span>Reingreso por Garantía (Diagnóstico $0)</span>
             </label>
+          </div>
+
+          <div style={{ gridColumn: '1 / -1', paddingTop: '8px', borderTop: '1px solid #E2E8F0' }}>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '8px' }}>
+              Estado del Presupuesto con el Cliente:{" "}
+              <span style={{ color: presupuestoAprobado === true ? '#15803D' : presupuestoAprobado === false ? '#991B1B' : '#B45309' }}>
+                {presupuestoAprobado === true ? 'Aprobado' : presupuestoAprobado === false ? 'Rechazado (No pasa a reparación)' : 'Pendiente de confirmación'}
+              </span>
+            </label>
+            {onRegistrarPresupuesto && (
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => onRegistrarPresupuesto(true)}
+                  style={{
+                    height: '34px',
+                    padding: '0 12px',
+                    fontSize: '12px',
+                    borderColor: presupuestoAprobado === true ? '#16A34A' : undefined,
+                    background: presupuestoAprobado === true ? '#DCFCE7' : undefined,
+                    color: presupuestoAprobado === true ? '#15803D' : undefined,
+                    fontWeight: 600
+                  }}
+                >
+                  ✓ Cliente Aprobó
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => onRegistrarPresupuesto(false)}
+                  style={{
+                    height: '34px',
+                    padding: '0 12px',
+                    fontSize: '12px',
+                    borderColor: presupuestoAprobado === false ? '#DC2626' : undefined,
+                    background: presupuestoAprobado === false ? '#FEF2F2' : undefined,
+                    color: presupuestoAprobado === false ? '#991B1B' : undefined,
+                    fontWeight: 600
+                  }}
+                >
+                  ✕ Cliente Rechazó
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

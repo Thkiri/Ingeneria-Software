@@ -18,12 +18,19 @@ class Cliente(models.Model):
     rut        = models.CharField(max_length=12, unique=True, validators=[rut_validator])
     nombre     = models.CharField(max_length=100)
     apellido   = models.CharField(max_length=100)
-    telefono   = models.CharField(max_length=15, blank=True)
-    email      = models.EmailField(blank=True)
+    telefono   = models.CharField(max_length=15, verbose_name="Teléfono de contacto (Obligatorio)")
+    email      = models.EmailField(blank=True, verbose_name="Correo electrónico (Opcional)")
+
+    def clean(self):
+        super().clean()
+        if not self.telefono or not self.telefono.strip():
+            raise ValidationError({'telefono': 'El teléfono de contacto del cliente es obligatorio.'})
 
     def save(self, *args, **kwargs):
         if self.rut:
             self.rut = self.rut.upper().strip()
+        if self.telefono:
+            self.telefono = self.telefono.strip()
         super().save(*args, **kwargs)
 
     def __str__(self):

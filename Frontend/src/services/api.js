@@ -99,6 +99,13 @@ export async function cambiarEstadoOrden(numero, nuevoEstado, observacion = '') 
   });
 }
 
+export async function notificarClienteOrden(numero, observacion = '') {
+  return await apiRequest(`/ordenes/${numero}/notificar-cliente/`, {
+    method: 'POST',
+    body: JSON.stringify({ observacion }),
+  });
+}
+
 // ========================================================
 // Clientes
 // ========================================================

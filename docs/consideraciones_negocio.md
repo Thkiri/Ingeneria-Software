@@ -14,6 +14,14 @@ El sistema no puede avanzar de `EN_DIAGNOSTICO` a `EN_REPARACION` sin que el pre
 
 ---
 
+### Contacto del Cliente y Notificación de Retiro (HU-09)
+
+Todo cliente registrado en el sistema debe contar **obligatoriamente con un número de teléfono válido**. El correo electrónico es un campo **opcional** que se registra si el cliente desea recibir copia del presupuesto por esa vía. Esto garantiza que el taller nunca quede sin vía de contacto directo con el propietario del vehículo.
+
+Cuando una orden pasa a `LISTA_ENTREGA` (tras aprobar el Control de Calidad), Recepción realiza la llamada telefónica al número obligatorio del cliente informando que su vehículo está listo para retiro y registra la notificación en el historial de la OT antes de concretar la entrega presencial.
+
+---
+
 ### Diagnóstico — $15.000 siempre
 
 El diagnóstico se cobra en todos los casos sin excepción. Aparece siempre como línea separada en el cobro final con el texto explícito "Revisión y diagnóstico inicial — $15.000". Así el cliente ve exactamente qué pagó por ese concepto y qué pagó por reparación.

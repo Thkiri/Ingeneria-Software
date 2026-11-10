@@ -64,6 +64,11 @@ class ClienteSerializer(serializers.ModelSerializer):
     def get_nombre_completo(self, obj):
         return f"{obj.nombre} {obj.apellido}".strip()
 
+    def validate_telefono(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("El teléfono de contacto del cliente es obligatorio.")
+        return value.strip()
+
 
 class VehiculoSerializer(serializers.ModelSerializer):
     """Serializador para el modelo Vehiculo."""

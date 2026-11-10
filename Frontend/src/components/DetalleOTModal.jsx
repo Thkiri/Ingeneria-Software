@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Check, AlertCircle } from 'lucide-react';
 import {
   cambiarEstadoOrden,
+  notificarClienteOrden,
   updateOrden,
   createRepuesto,
   deleteRepuesto,
@@ -160,6 +161,21 @@ export default function DetalleOTModal({
     }
   };
 
+  const handleNotificarCliente = async () => {
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      const updated = await notificarClienteOrden(orden.numero);
+      onStateChanged(updated);
+      setSuccessMsg('Llamada telefónica registrada en el historial de la OT.');
+    } catch (err) {
+      setErrorMsg(err.message || 'Error al registrar la notificación telefónica.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAgregarRepuesto = async (e) => {
     e.preventDefault();
     if (!nuevoRepuesto.nombre_pieza.trim() || !nuevoRepuesto.precio_unitario) {
@@ -301,6 +317,7 @@ export default function DetalleOTModal({
         successMsg={successMsg}
         presupuestoAprobado={presupuestoAprobado}
         onRegistrarPresupuesto={handleRegistrarRespuestaPresupuesto}
+        onNotificarCliente={handleNotificarCliente}
         onEntregarVehiculo={() =>
           handleTransicionEstado('ENT', 'Vehículo entregado al cliente en Recepción')
         }
@@ -549,6 +566,8 @@ export default function DetalleOTModal({
                     setFechaEstimada={setFechaEstimada}
                     esGarantia={esGarantia}
                     setEsGarantia={setEsGarantia}
+                    presupuestoAprobado={presupuestoAprobado}
+                    onRegistrarPresupuesto={handleRegistrarRespuestaPresupuesto}
                     loading={loading}
                     onSave={handleGuardarDiagnostico}
                   />
@@ -617,11 +636,12 @@ export default function DetalleOTModal({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
                 {estadosSelector.map((est) => {
                   const isCurrent = orden.estado === est.code;
+                  const blockedByBudget = est.code === 'REP' && presupuestoAprobado === false;
                   return (
                     <button
                       key={est.code}
                       type="button"
-                      disabled={loading || isCurrent}
+                      disabled={loading || isCurrent || blockedByBudget}
                       onClick={() => handleTransicionEstado(est.code)}
                       style={{
                         width: '100%',
@@ -629,17 +649,18 @@ export default function DetalleOTModal({
                         borderRadius: '8px',
                         border: isCurrent ? '1px solid #FDBA74' : '1px solid #F1F5F9',
                         background: isCurrent ? '#FFF7ED' : '#F8FAFC',
-                        color: isCurrent ? '#C2410C' : '#0F172A',
+                        color: isCurrent ? '#C2410C' : blockedByBudget ? '#94A3B8' : '#0F172A',
                         fontWeight: isCurrent ? 700 : 500,
                         fontSize: '13px',
                         textAlign: 'left',
-                        cursor: isCurrent ? 'default' : 'pointer',
+                        cursor: isCurrent || blockedByBudget ? 'not-allowed' : 'pointer',
+                        opacity: blockedByBudget ? 0.6 : 1,
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center'
                       }}
                     >
-                      <span>{est.label}</span>
+                      <span>{est.label}{blockedByBudget ? ' (Presupuesto rechazado)' : ''}</span>
                       {isCurrent && <Check size={15} color="#C2410C" />}
                     </button>
                   );

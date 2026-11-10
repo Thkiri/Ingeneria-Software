@@ -1,6 +1,20 @@
+# =========================================================================
+# TecniMotor Sur — Dependencias del Backend (Python / Django)
+# Entorno virtual local: .venv
+# =========================================================================
+
+# --- Núcleo del Framework y Servidor Web ---
 asgiref==3.13.0
 Django==5.2.18
-django-cors-headers==4.9.0
-djangorestframework==3.18.3
 sqlparse==0.6.0
 tzdata==2026.5
+
+# --- API RESTful y Comunicación con Frontend React (CORS) ---
+djangorestframework==3.18.3
+django-cors-headers==4.9.0
+
+# --- Dependencias Opcionales para Preproducción / MySQL 8.0 (Sprint 4) ---
+# Descomentar e instalar en el entorno virtual si se activa DB_ENGINE=mysql:
+# PyMySQL==1.1.1
+# cryptography==44.0.0
+# python-dotenv==1.0.1

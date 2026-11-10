@@ -212,6 +212,33 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(orden)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['post'], url_path='notificar-cliente')
+    def notificar_cliente(self, request, pk=None):
+        """
+        Registra en la bitácora de auditoría que Recepción o el Jefe de Taller
+        notificó telefónicamente al cliente que su vehículo está listo para retiro (HU-09).
+        """
+        orden = self.get_object()
+        telefono = orden.cliente.telefono or 'Sin teléfono'
+        observacion_extra = request.data.get('observacion', '').strip()
+        detalle_obs = (
+            observacion_extra
+            if observacion_extra
+            else f"Notificación telefónica realizada al {telefono}: Vehículo listo para retiro (Total: ${orden.total_a_pagar:,.0f} CLP)"
+        )
+
+        usuario = request.user if request.user.is_authenticated else None
+        HistorialEstadoOT.objects.create(
+            orden=orden,
+            estado_anterior=orden.estado,
+            estado_nuevo=orden.estado,
+            usuario=usuario,
+            observacion=detalle_obs[:255],
+        )
+
+        serializer = self.get_serializer(orden)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 @api_view(['GET'])
 @permission_classes([AllowAny])

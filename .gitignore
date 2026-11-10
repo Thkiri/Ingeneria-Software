@@ -38,6 +38,10 @@ scratch/
 *.doc
 Reporte*
 
+# Variables de entorno y secretos (se versiona únicamente .env.example)
+.env
+.env.local
+
 # Directrices de IA y asistentes
 AGENTS*.md
 
