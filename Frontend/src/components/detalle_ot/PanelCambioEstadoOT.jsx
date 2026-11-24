@@ -7,9 +7,15 @@ export default function PanelCambioEstadoOT({
   estadosSelector,
   loading,
   presupuestoAprobado,
+  formatCLP = (v) => '$' + Math.round(Number(v) || 0).toLocaleString('es-CL'),
   onTransicionEstado,
   onReingresoGarantia,
+  onRegistrarCobroParcial,
 }) {
+  const puedeCancelarPorEstado = ['ING', 'DIA', 'ESP', 'REP'].includes(orden.estado);
+  const requiereCobroParcial = orden.estado === 'REP';
+  const cobroParcialVigente = Boolean(orden.cobro_parcial_vigente);
+  const cancelarBloqueado = requiereCobroParcial && !cobroParcialVigente;
   return (
     <div style={{
       background: '#FFFFFF',
@@ -110,11 +116,46 @@ export default function PanelCambioEstadoOT({
         </div>
       )}
 
-      {rol === 'JEFE_TALLER' && orden.estado !== 'CAN' && orden.estado !== 'ENT' && (
-        <div style={{ paddingTop: '10px', borderTop: '1px solid #F1F5F9' }}>
+      {rol === 'JEFE_TALLER' && puedeCancelarPorEstado && (
+        <div style={{ paddingTop: '10px', borderTop: '1px solid #F1F5F9', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {requiereCobroParcial && (
+            cobroParcialVigente ? (
+              <div style={{
+                padding: '8px 10px',
+                borderRadius: '8px',
+                background: '#ECFDF5',
+                border: '1px solid #A7F3D0',
+                color: '#065F46',
+                fontSize: '12px',
+                fontWeight: 600,
+              }}>
+                ✓ Cobro parcial pagado ({formatCLP(orden.monto_cobro_parcial)})
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={loading}
+                onClick={onRegistrarCobroParcial}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '8px',
+                  border: '1px solid #FDE68A',
+                  background: '#FFFBEB',
+                  color: '#92400E',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Registrar Cobro Parcial ({formatCLP(orden.total_a_pagar)})
+              </button>
+            )
+          )}
+
           <button
             type="button"
-            disabled={loading}
+            disabled={loading || cancelarBloqueado}
             onClick={() => onTransicionEstado('CAN', 'Orden cancelada por el Jefe de Taller')}
             style={{
               width: '100%',
@@ -125,10 +166,11 @@ export default function PanelCambioEstadoOT({
               color: '#991B1B',
               fontSize: '12px',
               fontWeight: 600,
-              cursor: 'pointer'
+              opacity: cancelarBloqueado ? 0.5 : 1,
+              cursor: cancelarBloqueado ? 'not-allowed' : 'pointer'
             }}
           >
-            Cancelar Orden de Trabajo
+            {cancelarBloqueado ? 'Cancelar OT (Requiere cobro parcial)' : 'Cancelar Orden de Trabajo'}
           </button>
         </div>
       )}

@@ -1,8 +1,11 @@
+from decimal import Decimal
+
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import F, Q
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
@@ -114,11 +117,20 @@ class DetalleRepuestoViewSet(viewsets.ModelViewSet):
     serializer_class = DetalleRepuestoSerializer
 
     def get_queryset(self):
-        queryset = DetalleRepuesto.objects.select_related('orden').all().order_by('id')
+        queryset = DetalleRepuesto.objects.select_related('orden').filter(
+            ciclo=F('orden__ciclo')
+        ).order_by('id')
         orden_id = self.request.query_params.get('orden')
         if orden_id:
             queryset = queryset.filter(orden_id=orden_id)
         return queryset
+
+    def perform_destroy(self, instance):
+        try:
+            instance.delete()
+        except ValidationError as e:
+            mensaje = e.messages[0] if hasattr(e, 'messages') else str(e)
+            raise DRFValidationError({"error": mensaje})
 
 
 class RegistroHorasViewSet(viewsets.ModelViewSet):
@@ -129,7 +141,9 @@ class RegistroHorasViewSet(viewsets.ModelViewSet):
     serializer_class = RegistroHorasSerializer
 
     def get_queryset(self):
-        queryset = RegistroHoras.objects.select_related('orden', 'mecanico', 'mecanico__perfil').all().order_by('-fecha', '-id')
+        queryset = RegistroHoras.objects.select_related(
+            'orden', 'mecanico', 'mecanico__perfil'
+        ).filter(ciclo=F('orden__ciclo')).order_by('-fecha', '-id')
         orden_id = self.request.query_params.get('orden')
         if orden_id:
             queryset = queryset.filter(orden_id=orden_id)
@@ -137,6 +151,13 @@ class RegistroHorasViewSet(viewsets.ModelViewSet):
         if mecanico_id:
             queryset = queryset.filter(mecanico_id=mecanico_id)
         return queryset
+
+    def perform_destroy(self, instance):
+        try:
+            instance.delete()
+        except ValidationError as e:
+            mensaje = e.messages[0] if hasattr(e, 'messages') else str(e)
+            raise DRFValidationError({"error": mensaje})
 
 
 class ControlCalidadViewSet(viewsets.ModelViewSet):
@@ -151,6 +172,13 @@ class ControlCalidadViewSet(viewsets.ModelViewSet):
         if orden_id:
             queryset = queryset.filter(orden_id=orden_id)
         return queryset
+
+    def perform_destroy(self, instance):
+        try:
+            instance.delete()
+        except ValidationError as e:
+            mensaje = e.messages[0] if hasattr(e, 'messages') else str(e)
+            raise DRFValidationError({"error": mensaje})
 
 
 class OrdenTrabajoViewSet(viewsets.ModelViewSet):
@@ -253,6 +281,46 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
             return Response({"error": "La observación debe ser texto."}, status=status.HTTP_400_BAD_REQUEST)
 
         detalle_obs = f"{HistorialEstadoOT.PREFIJO_AVISO_RETIRO}: vehículo listo para retiro."
+        if observacion_extra.strip():
+            detalle_obs += f" {observacion_extra.strip()}"
+
+        usuario = request.user if request.user.is_authenticated else None
+        HistorialEstadoOT.objects.create(
+            orden=orden,
+            estado_anterior=orden.estado,
+            estado_nuevo=orden.estado,
+            usuario=usuario,
+            observacion=detalle_obs[:255],
+        )
+
+        if hasattr(orden, '_prefetched_objects_cache'):
+            orden._prefetched_objects_cache = {}
+        serializer = self.get_serializer(orden)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='registrar-cobro-parcial')
+    def registrar_cobro_parcial(self, request, pk=None):
+        """
+        Registra el cobro parcial pagado por lo consumido hasta el momento
+        para habilitar la cancelación de una orden que ya se encuentra en reparación.
+        """
+        orden = self.get_object()
+        if orden.estado != OrdenTrabajo.Estado.EN_REPARACION:
+            return Response(
+                {"error": "El cobro parcial por cancelación solo aplica cuando la orden está 'En Reparación'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        observacion_extra = request.data.get('observacion', '')
+        if not isinstance(observacion_extra, str):
+            return Response({"error": "La observación debe ser texto."}, status=status.HTTP_400_BAD_REQUEST)
+
+        monto = Decimal(f"{orden.total_a_pagar:.2f}")
+        orden.cobro_parcial_pagado = True
+        orden.monto_cobro_parcial = monto
+        orden.save(update_fields=['cobro_parcial_pagado', 'monto_cobro_parcial'])
+
+        detalle_obs = f"Cobro parcial registrado y pagado (${monto:,.0f} CLP)."
         if observacion_extra.strip():
             detalle_obs += f" {observacion_extra.strip()}"
 

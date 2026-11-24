@@ -3,6 +3,7 @@ import { X, AlertCircle } from 'lucide-react';
 import {
   cambiarEstadoOrden,
   notificarClienteOrden,
+  registrarCobroParcialOrden,
   updateOrden,
   createRepuesto,
   deleteRepuesto,
@@ -179,10 +180,27 @@ export default function DetalleOTModal({
         'DIA',
         'Reingreso por garantía autorizado por Jefe de Taller (Diagnóstico $0, MO $0)'
       );
+      setPresupuestoAprobado(updated.presupuesto_aprobado ?? null);
+      setObsCalidad('');
       onStateChanged(updated);
-      setSuccessMsg('Orden reabierta en Diagnóstico por Garantía (Costo diagnóstico fijado en $0).');
+      setSuccessMsg('Orden reabierta en Diagnóstico por Garantía (Diagnóstico $0, Mano de obra $0, presupuesto y calidad reiniciados).');
     } catch (err) {
       setErrorMsg(err.message || 'No se pudo procesar el reingreso por garantía.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegistrarCobroParcial = async () => {
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      const updated = await registrarCobroParcialOrden(orden.numero);
+      onStateChanged(updated);
+      setSuccessMsg(`Cobro parcial pagado (${formatCLP(updated.monto_cobro_parcial)}). Ahora puedes cancelar la orden.`);
+    } catch (err) {
+      setErrorMsg(err.message || 'No se pudo registrar el cobro parcial.');
     } finally {
       setLoading(false);
     }
@@ -341,6 +359,7 @@ export default function DetalleOTModal({
   // 2. Vista Técnica Completa (Jefe de Taller y Mecánico)
   const repuestosList = orden.repuestos_detalle || [];
   const horasList = orden.registro_horas || [];
+  const cobroBloqueado = Boolean(orden.cobro_bloqueado || ['LST', 'ENT', 'CAN'].includes(orden.estado));
   const estadosSelector =
     rol === 'MECANICO'
       ? ESTADOS.filter((e) => ['DIA', 'ESP', 'REP', 'CAL'].includes(e.code))
@@ -492,6 +511,7 @@ export default function DetalleOTModal({
                   <TabRepuestos
                     repuestosList={repuestosList}
                     totalRepuestosNeto={orden.total_repuestos_neto}
+                    cobroBloqueado={cobroBloqueado}
                     formatCLP={formatCLP}
                     onOpenAgregarModal={() => {
                       setRepuestoConfirmado(null);
@@ -509,6 +529,7 @@ export default function DetalleOTModal({
                     mecanicos={mecanicos}
                     nuevaHora={nuevaHora}
                     setNuevaHora={setNuevaHora}
+                    cobroBloqueado={cobroBloqueado}
                     loading={loading}
                     formatCLP={formatCLP}
                     onAgregarHora={handleAgregarHora}
@@ -521,6 +542,7 @@ export default function DetalleOTModal({
                     orden={orden}
                     obsCalidad={obsCalidad}
                     setObsCalidad={setObsCalidad}
+                    cobroBloqueado={cobroBloqueado}
                     loading={loading}
                     onDictamen={handleDictamenCalidad}
                   />
@@ -534,8 +556,10 @@ export default function DetalleOTModal({
               estadosSelector={estadosSelector}
               loading={loading}
               presupuestoAprobado={presupuestoAprobado}
+              formatCLP={formatCLP}
               onTransicionEstado={handleTransicionEstado}
               onReingresoGarantia={handleReingresoGarantia}
+              onRegistrarCobroParcial={handleRegistrarCobroParcial}
             />
           </div>
         </div>

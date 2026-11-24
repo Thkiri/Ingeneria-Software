@@ -4,6 +4,7 @@ import { Plus, Trash2 } from 'lucide-react';
 export default function TabRepuestos({
   repuestosList,
   totalRepuestosNeto,
+  cobroBloqueado = false,
   formatCLP,
   onOpenAgregarModal,
   onEliminarRepuesto,
@@ -25,16 +26,31 @@ export default function TabRepuestos({
           </p>
         </div>
 
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={onOpenAgregarModal}
-          style={{ height: '40px', padding: '0 16px', fontSize: '13px' }}
-        >
-          <Plus size={16} />
-          <span>Agregar repuesto</span>
-        </button>
+        {!cobroBloqueado && (
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={onOpenAgregarModal}
+            style={{ height: '40px', padding: '0 16px', fontSize: '13px' }}
+          >
+            <Plus size={16} />
+            <span>Agregar repuesto</span>
+          </button>
+        )}
       </div>
+
+      {cobroBloqueado && (
+        <div style={{
+          background: '#F8FAFC',
+          border: '1px solid #CBD5E1',
+          color: '#334155',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          fontSize: '13px'
+        }}>
+          El cobro de esta orden está cerrado tras aprobar control de calidad o finalizar la atención. No se pueden modificar los repuestos.
+        </div>
+      )}
 
       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
         <thead>
@@ -56,14 +72,16 @@ export default function TabRepuestos({
               <td style={{ padding: '14px 12px' }}>{formatCLP(rep.precio_unitario)}</td>
               <td style={{ padding: '14px 12px', fontWeight: 600 }}>{formatCLP(rep.subtotal)}</td>
               <td style={{ padding: '14px 12px', textAlign: 'right' }}>
-                <button
-                  type="button"
-                  onClick={() => onEliminarRepuesto(rep.id)}
-                  style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}
-                  title="Eliminar repuesto"
-                >
-                  <Trash2 size={15} />
-                </button>
+                {!cobroBloqueado && (
+                  <button
+                    type="button"
+                    onClick={() => onEliminarRepuesto(rep.id)}
+                    style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}
+                    title="Eliminar repuesto"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
               </td>
             </tr>
           ))}

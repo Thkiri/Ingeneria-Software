@@ -174,3 +174,214 @@ class TecniMotorSprint4E2ETests(TestCase):
         self.assertEqual(res_gar.status_code, 200)
         self.assertEqual(res_gar.data['estado'], 'DIA')
         self.assertEqual(float(res_gar.data['costo_diagnostico']), 0.0)
+        self.assertEqual(float(res_gar.data['total_mano_obra_neto']), 0.0)
+        self.assertEqual(float(res_gar.data['total_repuestos_neto']), 0.0)
+        self.assertIsNone(res_gar.data['presupuesto_aprobado'])
+        self.assertIsNone(res_gar.data['control_calidad'])
+        self.assertEqual(len(res_gar.data['registro_horas']), 0)
+        self.assertEqual(len(res_gar.data['repuestos_detalle']), 0)
+
+    def _crear_escenario_base(self):
+        res_u = self.client.post('/api/usuarios/', {
+            'username': 'mec.qa',
+            'first_name': 'Luis',
+            'last_name': 'QA',
+            'rut': '17.333.444-5',
+            'rol': 'MECANICO',
+            'tarifa_hora': 17500,
+        }, format='json')
+        self.assertEqual(res_u.status_code, 201)
+        res_c = self.client.post('/api/clientes/', {
+            'rut': '16.555.666-7',
+            'nombre': 'Carlos',
+            'apellido': 'Perez',
+            'telefono': '+56911223344',
+        }, format='json')
+        self.assertEqual(res_c.status_code, 201)
+        res_v = self.client.post('/api/vehiculos/', {
+            'patente': 'QA2026',
+            'marca': 'Toyota',
+            'modelo': 'Yaris',
+            'anio': 2022,
+            'cliente': res_c.data['id'],
+        }, format='json')
+        self.assertEqual(res_v.status_code, 201)
+        res_ot = self.client.post('/api/ordenes/', {
+            'cliente': res_c.data['id'],
+            'vehiculo': res_v.data['id'],
+            'mecanico_asignado': res_u.data['id'],
+            'diagnostico': 'Falla en frenos',
+        }, format='json')
+        self.assertEqual(res_ot.status_code, 201)
+        return res_u.data['id'], res_ot.data['numero']
+
+    def test_inmutabilidad_cobro_y_horas_tras_aprobar_calidad(self):
+        """Fallo 1: No se pueden eliminar ni alterar horas/repuestos/calidad una vez aprobada calidad (LST/ENT)."""
+        u_id, ot_num = self._crear_escenario_base()
+        self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'DIA'}, format='json')
+        self.client.patch(f'/api/ordenes/{ot_num}/', {'presupuesto_aprobado': True}, format='json')
+        self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'REP'}, format='json')
+
+        # 2h * $17.500 = $35.000 + $15.000 diag = $50.000 neto -> $59.500 con IVA
+        res_h = self.client.post('/api/horas/', {
+            'orden': ot_num,
+            'mecanico': u_id,
+            'horas': 2,
+            'tarifa': 17500,
+            'descripcion': 'Ajuste de frenos',
+        }, format='json')
+        self.assertEqual(res_h.status_code, 201)
+        hora_id = res_h.data['id']
+
+        res_rep = self.client.post('/api/repuestos/', {
+            'orden': ot_num,
+            'nombre_pieza': 'Liquido de frenos',
+            'cantidad': 1,
+            'precio_unitario': 10000,
+        }, format='json')
+        self.assertEqual(res_rep.status_code, 201)
+        rep_id = res_rep.data['id']
+
+        self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'CAL'}, format='json')
+        res_cc = self.client.post('/api/controles-calidad/', {
+            'orden': ot_num,
+            'jefe_taller': u_id,
+            'aprobado': True,
+            'observaciones': 'OK',
+        }, format='json')
+        self.assertEqual(res_cc.status_code, 201)
+        cc_id = res_cc.data['id']
+
+        res_lst = self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'LST'}, format='json')
+        self.assertEqual(res_lst.status_code, 200)
+        total_esperado = float(res_lst.data['total_a_pagar'])
+
+        # Intentar eliminar o agregar horas/repuestos o alterar calidad en LST debe fallar con 400
+        self.assertEqual(self.client.delete(f'/api/horas/{hora_id}/').status_code, 400)
+        self.assertEqual(self.client.patch(f'/api/horas/{hora_id}/', {'horas': 1}, format='json').status_code, 400)
+        self.assertEqual(self.client.post('/api/horas/', {
+            'orden': ot_num, 'mecanico': u_id, 'horas': 1, 'tarifa': 17500,
+        }, format='json').status_code, 400)
+        self.assertEqual(self.client.delete(f'/api/repuestos/{rep_id}/').status_code, 400)
+        self.assertEqual(self.client.post('/api/repuestos/', {
+            'orden': ot_num, 'nombre_pieza': 'Extra', 'cantidad': 1, 'precio_unitario': 5000,
+        }, format='json').status_code, 400)
+        self.assertEqual(self.client.patch(f'/api/controles-calidad/{cc_id}/', {'aprobado': False}, format='json').status_code, 400)
+        self.assertEqual(self.client.delete(f'/api/controles-calidad/{cc_id}/').status_code, 400)
+
+        # El total a pagar permanece intacto
+        res_check = self.client.get(f'/api/ordenes/{ot_num}/')
+        self.assertEqual(float(res_check.data['total_a_pagar']), total_esperado)
+        self.assertEqual(len(res_check.data['registro_horas']), 1)
+
+    def test_reingreso_garantia_reinicia_ciclo_y_mano_obra_cero(self):
+        """Fallo 2: Reingreso por garantía limpia presupuesto, calidad, cobro previo y fija MO en $0."""
+        u_id, ot_num = self._crear_escenario_base()
+        self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'DIA'}, format='json')
+        self.client.patch(f'/api/ordenes/{ot_num}/', {'presupuesto_aprobado': True}, format='json')
+        self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'REP'}, format='json')
+        self.client.post('/api/horas/', {
+            'orden': ot_num, 'mecanico': u_id, 'horas': 2, 'tarifa': 17500, 'descripcion': 'Trabajo inicial',
+        }, format='json')
+        self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'CAL'}, format='json')
+        self.client.post('/api/controles-calidad/', {
+            'orden': ot_num, 'jefe_taller': u_id, 'aprobado': True, 'observaciones': 'OK inicial',
+        }, format='json')
+        self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'LST'}, format='json')
+        self.client.post(f'/api/ordenes/{ot_num}/notificar-cliente/', {}, format='json')
+        self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'ENT'}, format='json')
+
+        # Reingreso por garantía
+        self.client.patch(f'/api/ordenes/{ot_num}/', {'reingresado_por_garantia': True, 'costo_diagnostico': 0}, format='json')
+        res_gar = self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'DIA'}, format='json')
+        self.assertEqual(res_gar.status_code, 200)
+        self.assertEqual(float(res_gar.data['costo_diagnostico']), 0.0)
+        self.assertEqual(float(res_gar.data['total_mano_obra_neto']), 0.0)
+        self.assertEqual(float(res_gar.data['total_a_pagar']), 0.0)
+        self.assertIsNone(res_gar.data['presupuesto_aprobado'])
+        self.assertIsNone(res_gar.data['control_calidad'])
+
+        # No puede saltar a REP sin nueva aprobación del cliente
+        self.assertEqual(
+            self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'REP'}, format='json').status_code,
+            400
+        )
+        self.client.patch(f'/api/ordenes/{ot_num}/', {'presupuesto_aprobado': True}, format='json')
+        self.assertEqual(
+            self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'REP'}, format='json').status_code,
+            200
+        )
+
+        # No puede pasar a CAL sin nuevas horas en el ciclo de garantía
+        self.assertEqual(
+            self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'CAL'}, format='json').status_code,
+            400
+        )
+
+        # Registrar horas en garantía: aunque se envíe tarifa 17500, queda en $0
+        res_h_gar = self.client.post('/api/horas/', {
+            'orden': ot_num, 'mecanico': u_id, 'horas': 1.5, 'tarifa': 17500, 'descripcion': 'Corrección garantía',
+        }, format='json')
+        self.assertEqual(res_h_gar.status_code, 201)
+        self.assertEqual(float(res_h_gar.data['tarifa']), 0.0)
+        self.assertEqual(float(res_h_gar.data['costo']), 0.0)
+
+        # Repuesto adicional en garantía sí se cobra normalmente ($20.000 neto -> $23.800 con IVA)
+        res_rep_gar = self.client.post('/api/repuestos/', {
+            'orden': ot_num, 'nombre_pieza': 'Sello adicional', 'cantidad': 1, 'precio_unitario': 20000,
+        }, format='json')
+        self.assertEqual(res_rep_gar.status_code, 201)
+
+        res_ot_gar = self.client.get(f'/api/ordenes/{ot_num}/')
+        self.assertEqual(float(res_ot_gar.data['costo_diagnostico']), 0.0)
+        self.assertEqual(float(res_ot_gar.data['total_mano_obra_neto']), 0.0)
+        self.assertEqual(float(res_ot_gar.data['total_repuestos_neto']), 20000.0)
+        self.assertEqual(float(res_ot_gar.data['total_a_pagar']), 23800.0)
+
+    def test_cancelacion_en_reparacion_requiere_cobro_parcial(self):
+        """Fallo 3: Cancelar desde EN_REPARACION exige registrar cobro parcial previo por lo consumido."""
+        u_id, ot_num = self._crear_escenario_base()
+        self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'DIA'}, format='json')
+        self.client.patch(f'/api/ordenes/{ot_num}/', {'presupuesto_aprobado': True}, format='json')
+        self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'REP'}, format='json')
+        self.client.post('/api/horas/', {
+            'orden': ot_num, 'mecanico': u_id, 'horas': 1, 'tarifa': 17500, 'descripcion': 'Avance parcial',
+        }, format='json')
+
+        # Intentar cancelar sin cobro parcial -> 400
+        res_can_bad = self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'CAN'}, format='json')
+        self.assertEqual(res_can_bad.status_code, 400)
+
+        # Intentar forzar cobro_parcial_pagado vía PATCH no surte efecto (read-only)
+        self.client.patch(f'/api/ordenes/{ot_num}/', {'cobro_parcial_pagado': True}, format='json')
+        self.assertEqual(
+            self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'CAN'}, format='json').status_code,
+            400
+        )
+
+        # Registrar cobro parcial por endpoint dedicado -> 200
+        res_pago = self.client.post(f'/api/ordenes/{ot_num}/registrar-cobro-parcial/', {
+            'observacion': 'Pagado en caja con transferencia',
+        }, format='json')
+        self.assertEqual(res_pago.status_code, 200)
+        self.assertTrue(res_pago.data['cobro_parcial_pagado'])
+        self.assertTrue(res_pago.data['cobro_parcial_vigente'])
+        self.assertEqual(float(res_pago.data['monto_cobro_parcial']), float(res_pago.data['total_a_pagar']))
+
+        # Si se agrega un repuesto adicional después del pago, el cobro parcial deja de cubrir el total
+        self.client.post('/api/repuestos/', {
+            'orden': ot_num, 'nombre_pieza': 'Empaquetadura', 'cantidad': 1, 'precio_unitario': 10000,
+        }, format='json')
+        self.assertEqual(
+            self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'CAN'}, format='json').status_code,
+            400
+        )
+
+        # Actualizar cobro parcial con el nuevo total y ahora sí cancelar -> 200
+        self.assertEqual(
+            self.client.post(f'/api/ordenes/{ot_num}/registrar-cobro-parcial/', {}, format='json').status_code,
+            200
+        )
+        res_can_ok = self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'CAN'}, format='json')
+        self.assertEqual(res_can_ok.status_code, 200)
+        self.assertEqual(res_can_ok.data['estado'], 'CAN')

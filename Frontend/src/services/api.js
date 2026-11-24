@@ -106,6 +106,13 @@ export async function notificarClienteOrden(numero, observacion = '') {
   });
 }
 
+export async function registrarCobroParcialOrden(numero, observacion = '') {
+  return await apiRequest(`/ordenes/${numero}/registrar-cobro-parcial/`, {
+    method: 'POST',
+    body: JSON.stringify({ observacion }),
+  });
+}
+
 // ========================================================
 // Clientes
 // ========================================================

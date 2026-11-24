@@ -7,11 +7,13 @@ export default function TabHorasHombre({
   mecanicos,
   nuevaHora,
   setNuevaHora,
+  cobroBloqueado,
   loading,
   formatCLP,
   onAgregarHora,
   onEliminarHora,
 }) {
+  const estaCerrada = cobroBloqueado ?? ['LST', 'ENT', 'CAN'].includes(orden.estado);
   const bloqueadoPorEstado = ['ING', 'DIA'].includes(orden.estado);
 
   return (
@@ -25,7 +27,32 @@ export default function TabHorasHombre({
         </p>
       </div>
 
-      {bloqueadoPorEstado ? (
+      {orden.reingresado_por_garantia && !estaCerrada && (
+        <div style={{
+          background: '#EFF6FF',
+          border: '1px solid #BFDBFE',
+          color: '#1E40AF',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          fontSize: '13px',
+          fontWeight: 600,
+        }}>
+          Reingreso por garantía: las horas trabajadas se registran con tarifa $0 (sin costo de mano de obra).
+        </div>
+      )}
+
+      {estaCerrada ? (
+        <div style={{
+          background: '#F8FAFC',
+          border: '1px solid #CBD5E1',
+          color: '#334155',
+          padding: '14px 16px',
+          borderRadius: '8px',
+          fontSize: '13px'
+        }}>
+          El cobro de esta orden está cerrado tras aprobar control de calidad o finalizar la atención. No se pueden agregar ni eliminar horas hombre.
+        </div>
+      ) : bloqueadoPorEstado ? (
         <div style={{
           background: '#FFFBEB',
           border: '1px solid #FDE68A',
@@ -137,13 +164,16 @@ export default function TabHorasHombre({
               <td style={{ padding: '12px' }}>{formatCLP(h.tarifa)}</td>
               <td style={{ padding: '12px', fontWeight: 600 }}>{formatCLP(h.costo)}</td>
               <td style={{ padding: '12px', textAlign: 'right' }}>
-                <button
-                  type="button"
-                  onClick={() => onEliminarHora(h.id)}
-                  style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}
-                >
-                  <Trash2 size={15} />
-                </button>
+                {!estaCerrada && (
+                  <button
+                    type="button"
+                    onClick={() => onEliminarHora(h.id)}
+                    style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}
+                    title="Eliminar registro de horas"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
               </td>
             </tr>
           ))}

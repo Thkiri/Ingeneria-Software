@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -122,6 +124,20 @@ class OrdenTrabajo(models.Model):
         verbose_name="¿Presupuesto Aprobado?",
         help_text="True: Aprobado por cliente, False: Rechazado, None: Pendiente"
     )
+    ciclo = models.PositiveIntegerField(
+        default=1,
+        verbose_name="Ciclo de atención",
+        help_text="Se incrementa automáticamente en cada reingreso por garantía"
+    )
+    cobro_parcial_pagado = models.BooleanField(
+        default=False,
+        verbose_name="¿Cobro parcial pagado?",
+        help_text="Requerido antes de cancelar una orden que ya entró en reparación"
+    )
+    monto_cobro_parcial = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        verbose_name="Monto Cobro Parcial Pagado"
+    )
 
     diagnostico          = models.TextField(blank=True, verbose_name="Diagnóstico")
     trabajos_realizados  = models.TextField(blank=True)
@@ -131,6 +147,12 @@ class OrdenTrabajo(models.Model):
         help_text="Ej: Filtro de aceite x1, Pastillas de freno x2"
     )
     observaciones        = models.TextField(blank=True)
+
+    ESTADOS_COBRO_CERRADO = (
+        Estado.LISTA,
+        Estado.ENTREGADA,
+        Estado.CANCELADA,
+    )
 
     TRANSICIONES_VALIDAS = {
         Estado.INGRESADA: [Estado.EN_DIAGNOSTICO, Estado.CANCELADA],
@@ -144,12 +166,26 @@ class OrdenTrabajo(models.Model):
     }
 
     @property
+    def cobro_bloqueado(self):
+        return self.estado in self.ESTADOS_COBRO_CERRADO
+
+    @property
+    def repuestos_actuales(self):
+        return [r for r in self.repuestos_detalle.all() if r.ciclo == self.ciclo]
+
+    @property
+    def horas_actuales(self):
+        return [h for h in self.registro_horas.all() if h.ciclo == self.ciclo]
+
+    @property
     def total_repuestos_neto(self):
-        return sum(r.subtotal for r in self.repuestos_detalle.all())
+        return sum((r.subtotal for r in self.repuestos_actuales), Decimal("0.00"))
 
     @property
     def total_mano_obra_neto(self):
-        return sum(h.costo for h in self.registro_horas.all())
+        if self.reingresado_por_garantia:
+            return Decimal("0.00")
+        return sum((h.costo for h in self.horas_actuales), Decimal("0.00"))
 
     @property
     def subtotal_neto(self):
@@ -162,6 +198,14 @@ class OrdenTrabajo(models.Model):
     @property
     def total_a_pagar(self):
         return round(self.subtotal_neto + self.iva_19, 2)
+
+    @property
+    def cobro_parcial_vigente(self):
+        return (
+            self.cobro_parcial_pagado
+            and self.monto_cobro_parcial is not None
+            and self.monto_cobro_parcial == Decimal(f"{self.total_a_pagar:.2f}")
+        )
 
     def clean(self):
         super().clean()
@@ -264,14 +308,21 @@ class OrdenTrabajo(models.Model):
         if nuevo_estado == self.Estado.ENTREGADA and not self.cliente_notificado_para_entrega:
             raise ValidationError("Registra la llamada al cliente antes de marcar la entrega.")
 
-        # 6. Exigir Horas Hombre registradas para CONTROL_CALIDAD y LISTA_ENTREGA (HU-05 / HU-07)
+        # 6. Cancelación desde EN_REPARACION exige cobro parcial pagado por lo consumido
+        if nuevo_estado == self.Estado.CANCELADA and self.estado == self.Estado.EN_REPARACION:
+            if not self.cobro_parcial_vigente:
+                raise ValidationError(
+                    "Debe registrar el cobro parcial por lo consumido antes de cancelar una orden en reparación."
+                )
+
+        # 7. Exigir Horas Hombre registradas en el ciclo actual para CONTROL_CALIDAD y LISTA_ENTREGA (HU-05 / HU-07)
         if nuevo_estado in [self.Estado.CONTROL_CALIDAD, self.Estado.LISTA]:
-            if not self.registro_horas.exists():
+            if not self.registro_horas.filter(ciclo=self.ciclo).exists():
                 raise ValidationError(
                     "No se puede avanzar sin antes registrar las Horas Hombre trabajadas en la orden."
                 )
 
-        # 7. Certificación de Control de Calidad obligatoria para LISTA_ENTREGA (HU-07)
+        # 8. Certificación de Control de Calidad obligatoria para LISTA_ENTREGA (HU-07)
         if nuevo_estado == self.Estado.LISTA:
             calidad = getattr(self, 'control_calidad', None)
             if not calidad or not calidad.aprobado:
@@ -279,9 +330,15 @@ class OrdenTrabajo(models.Model):
                     "No se puede avanzar a 'Lista para Entrega' sin un Control de Calidad aprobado por el Jefe de Taller."
                 )
 
-        # Si viene de reingreso por garantía hacia EN_DIAGNOSTICO, resetear costo_diagnostico a 0
+        # Si viene de reingreso por garantía hacia EN_DIAGNOSTICO, abrir nuevo ciclo limpio (diagnóstico $0, MO $0)
         if self.estado == self.Estado.ENTREGADA and nuevo_estado == self.Estado.EN_DIAGNOSTICO and self.reingresado_por_garantia:
-            self.costo_diagnostico = 0.00
+            self.ciclo += 1
+            self.costo_diagnostico = Decimal("0.00")
+            self.presupuesto_aprobado = None
+            self.cobro_parcial_pagado = False
+            self.monto_cobro_parcial = None
+            ControlCalidad.objects.filter(orden=self).delete()
+            self._state.fields_cache.pop('control_calidad', None)
 
         self._usuario_modifica = usuario
         self._observacion_cambio = observacion
@@ -353,6 +410,7 @@ class DetalleRepuesto(models.Model):
     orden = models.ForeignKey(
         OrdenTrabajo, on_delete=models.CASCADE, related_name="repuestos_detalle"
     )
+    ciclo = models.PositiveIntegerField(default=1)
     nombre_pieza = models.CharField(max_length=150, verbose_name="Nombre de la Pieza o Insumo")
     cantidad = models.PositiveIntegerField(default=1)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Precio Unitario Neto")
@@ -360,6 +418,30 @@ class DetalleRepuesto(models.Model):
     @property
     def subtotal(self):
         return self.cantidad * self.precio_unitario
+
+    def clean(self):
+        super().clean()
+        if self.cantidad is not None and self.cantidad < 1:
+            raise ValidationError({"cantidad": "La cantidad debe ser al menos 1."})
+        if self.precio_unitario is not None and self.precio_unitario < 0:
+            raise ValidationError({"precio_unitario": "El precio unitario debe ser cero o mayor."})
+        if self.orden_id and self.orden.cobro_bloqueado:
+            raise ValidationError(
+                "No se pueden modificar los repuestos de una orden que ya aprobó control de calidad o está cerrada."
+            )
+
+    def save(self, *args, **kwargs):
+        if self.pk is None and self.orden_id:
+            self.ciclo = self.orden.ciclo
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.orden_id and self.orden.cobro_bloqueado:
+            raise ValidationError(
+                "No se pueden eliminar repuestos de una orden que ya aprobó control de calidad o está cerrada."
+            )
+        return super().delete(*args, **kwargs)
 
     def __str__(self):
         return f"{self.cantidad}x {self.nombre_pieza} (${self.subtotal:,.0f} CLP) - OT-{self.orden.numero:04d}"
@@ -375,6 +457,7 @@ class RegistroHoras(models.Model):
     orden = models.ForeignKey(
         OrdenTrabajo, on_delete=models.CASCADE, related_name="registro_horas"
     )
+    ciclo = models.PositiveIntegerField(default=1)
     mecanico = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="horas_registradas"
     )
@@ -389,18 +472,34 @@ class RegistroHoras(models.Model):
 
     def clean(self):
         super().clean()
+        if self.orden_id:
+            if self.orden.cobro_bloqueado:
+                raise ValidationError(
+                    "No se pueden modificar las horas hombre de una orden que ya aprobó control de calidad o está cerrada."
+                )
+            if self.orden.estado in [OrdenTrabajo.Estado.INGRESADA, OrdenTrabajo.Estado.EN_DIAGNOSTICO]:
+                raise ValidationError(
+                    "No se pueden registrar las horas en diagnóstico. Las horas se imputan a partir de 'En Reparación'."
+                )
+            if self.orden.reingresado_por_garantia:
+                self.tarifa = Decimal("0.00")
         if self.horas is not None and self.horas <= 0:
             raise ValidationError({"horas": "Las horas deben ser mayores que cero."})
         if self.tarifa is not None and self.tarifa < 0:
             raise ValidationError({"tarifa": "La tarifa debe ser cero o mayor."})
-        if self.orden_id and self.orden.estado in [OrdenTrabajo.Estado.INGRESADA, OrdenTrabajo.Estado.EN_DIAGNOSTICO]:
-            raise ValidationError(
-                "No se pueden registrar las horas en diagnóstico. Las horas se imputan a partir de 'En Reparación'."
-            )
 
     def save(self, *args, **kwargs):
+        if self.pk is None and self.orden_id:
+            self.ciclo = self.orden.ciclo
         self.full_clean()
         super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.orden_id and self.orden.cobro_bloqueado:
+            raise ValidationError(
+                "No se pueden eliminar horas hombre de una orden que ya aprobó control de calidad o está cerrada."
+            )
+        return super().delete(*args, **kwargs)
 
     def __str__(self):
         return f"{self.mecanico.get_full_name() or self.mecanico.username} - {self.horas}h (${self.costo:,.0f} CLP) - OT-{self.orden.numero:04d}"
@@ -422,6 +521,24 @@ class ControlCalidad(models.Model):
     aprobado = models.BooleanField(default=False, verbose_name="¿Control Aprobado?")
     observaciones = models.TextField(blank=True, verbose_name="Observaciones de Calidad")
     fecha = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        super().clean()
+        if self.orden_id and self.orden.cobro_bloqueado:
+            raise ValidationError(
+                "No se puede modificar el Control de Calidad de una orden lista para entrega o cerrada."
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.orden_id and self.orden.cobro_bloqueado:
+            raise ValidationError(
+                "No se puede eliminar el Control de Calidad de una orden lista para entrega o cerrada."
+            )
+        return super().delete(*args, **kwargs)
 
     def __str__(self):
         estado_txt = "APROBADO" if self.aprobado else "PENDIENTE/RECHAZADO"

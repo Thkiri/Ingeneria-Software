@@ -5,10 +5,12 @@ export default function TabControlCalidad({
   orden,
   obsCalidad,
   setObsCalidad,
+  cobroBloqueado,
   loading,
   onDictamen,
 }) {
   const tieneHoras = (orden.registro_horas || []).length > 0;
+  const estaCerrada = cobroBloqueado ?? ['LST', 'ENT', 'CAN'].includes(orden.estado);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
@@ -56,13 +58,15 @@ export default function TabControlCalidad({
         </label>
         <textarea
           rows={3}
+          disabled={estaCerrada}
           style={{
             width: '100%',
             padding: '12px 14px',
             borderRadius: '8px',
             border: '1px solid var(--border-color)',
             fontFamily: 'inherit',
-            fontSize: '14px'
+            fontSize: '14px',
+            background: estaCerrada ? '#F8FAFC' : '#FFFFFF',
           }}
           placeholder="Ej.: Prueba de ruta realizada, frenos responden correctamente, niveles verificados."
           value={obsCalidad}
@@ -74,12 +78,12 @@ export default function TabControlCalidad({
         <button
           type="button"
           className="btn-primary"
-          disabled={loading || !tieneHoras}
+          disabled={loading || !tieneHoras || estaCerrada}
           onClick={() => onDictamen(true)}
           style={{
             background: '#15803D',
-            opacity: tieneHoras ? 1 : 0.5,
-            cursor: tieneHoras ? 'pointer' : 'not-allowed',
+            opacity: tieneHoras && !estaCerrada ? 1 : 0.5,
+            cursor: tieneHoras && !estaCerrada ? 'pointer' : 'not-allowed',
           }}
         >
           <CheckCircle2 size={18} />
@@ -89,9 +93,15 @@ export default function TabControlCalidad({
         <button
           type="button"
           className="btn-secondary"
-          disabled={loading}
+          disabled={loading || estaCerrada}
           onClick={() => onDictamen(false)}
-          style={{ color: '#991B1B', borderColor: '#FECACA', background: '#FEF2F2' }}
+          style={{
+            color: '#991B1B',
+            borderColor: '#FECACA',
+            background: '#FEF2F2',
+            opacity: estaCerrada ? 0.5 : 1,
+            cursor: estaCerrada ? 'not-allowed' : 'pointer',
+          }}
         >
           <XCircle size={18} />
           <span>Rechazar (Devolver a En Reparación)</span>
