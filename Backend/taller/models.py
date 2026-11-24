@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
@@ -138,6 +138,11 @@ class OrdenTrabajo(models.Model):
         max_digits=10, decimal_places=2, null=True, blank=True,
         verbose_name="Monto Cobro Parcial Pagado"
     )
+    cancelada_sin_cobro = models.BooleanField(
+        default=False,
+        verbose_name="¿Cancelada sin cobro?",
+        help_text="Se activa al cancelar directamente en INGRESADA (cobro total $0)"
+    )
 
     diagnostico          = models.TextField(blank=True, verbose_name="Diagnóstico")
     trabajos_realizados  = models.TextField(blank=True)
@@ -178,17 +183,28 @@ class OrdenTrabajo(models.Model):
         return [h for h in self.registro_horas.all() if h.ciclo == self.ciclo]
 
     @property
+    def control_calidad(self):
+        for cc in self.controles_calidad.all():
+            if cc.ciclo == self.ciclo:
+                return cc
+        return None
+
+    @property
     def total_repuestos_neto(self):
+        if self.cancelada_sin_cobro:
+            return Decimal("0.00")
         return sum((r.subtotal for r in self.repuestos_actuales), Decimal("0.00"))
 
     @property
     def total_mano_obra_neto(self):
-        if self.reingresado_por_garantia:
+        if self.cancelada_sin_cobro or self.reingresado_por_garantia:
             return Decimal("0.00")
         return sum((h.costo for h in self.horas_actuales), Decimal("0.00"))
 
     @property
     def subtotal_neto(self):
+        if self.cancelada_sin_cobro:
+            return 0.0
         return float(self.costo_diagnostico) + float(self.total_repuestos_neto) + float(self.total_mano_obra_neto)
 
     @property
@@ -265,7 +281,7 @@ class OrdenTrabajo(models.Model):
                 return True
         return False
 
-    def registrar_cambio_estado(self, nuevo_estado, usuario=None, observacion=""):
+    def registrar_cambio_estado(self, nuevo_estado, usuario=None, observacion="", reingreso_garantia=False):
         """
         Método de lógica de negocio para transicionar estado con trazabilidad y
         validación estricta de la máquina de estados finitos según consideraciones_negocio.md.
@@ -278,11 +294,15 @@ class OrdenTrabajo(models.Model):
             raise ValidationError("La orden se encuentra Cancelada y no admite modificaciones posteriores.")
 
         # 2. Regla: Desde ENTREGADA solo se permite EN_DIAGNOSTICO si es reingreso por garantía
-        if self.estado == self.Estado.ENTREGADA:
-            if nuevo_estado != self.Estado.EN_DIAGNOSTICO or not self.reingresado_por_garantia:
-                raise ValidationError(
-                    "Una orden Entregada solo puede reabrirse a 'En Diagnóstico' mediante autorización de Reingreso por Garantía."
-                )
+        es_reingreso_garantia = (
+            self.estado == self.Estado.ENTREGADA
+            and nuevo_estado == self.Estado.EN_DIAGNOSTICO
+            and (reingreso_garantia or self.reingresado_por_garantia)
+        )
+        if self.estado == self.Estado.ENTREGADA and not es_reingreso_garantia:
+            raise ValidationError(
+                "Una orden Entregada solo puede reabrirse a 'En Diagnóstico' mediante autorización de Reingreso por Garantía."
+            )
 
         # 3. Validar transiciones permitidas
         permitidos = self.TRANSICIONES_VALIDAS.get(self.estado, [])
@@ -324,26 +344,57 @@ class OrdenTrabajo(models.Model):
 
         # 8. Certificación de Control de Calidad obligatoria para LISTA_ENTREGA (HU-07)
         if nuevo_estado == self.Estado.LISTA:
-            calidad = getattr(self, 'control_calidad', None)
+            calidad = self.control_calidad
             if not calidad or not calidad.aprobado:
                 raise ValidationError(
                     "No se puede avanzar a 'Lista para Entrega' sin un Control de Calidad aprobado por el Jefe de Taller."
                 )
 
-        # Si viene de reingreso por garantía hacia EN_DIAGNOSTICO, abrir nuevo ciclo limpio (diagnóstico $0, MO $0)
-        if self.estado == self.Estado.ENTREGADA and nuevo_estado == self.Estado.EN_DIAGNOSTICO and self.reingresado_por_garantia:
-            self.ciclo += 1
-            self.costo_diagnostico = Decimal("0.00")
-            self.presupuesto_aprobado = None
-            self.cobro_parcial_pagado = False
-            self.monto_cobro_parcial = None
-            ControlCalidad.objects.filter(orden=self).delete()
-            self._state.fields_cache.pop('control_calidad', None)
+        with transaction.atomic():
+            # Cancelación directa desde INGRESADA sin diagnóstico realizado -> cobro total $0
+            if self.estado == self.Estado.INGRESADA and nuevo_estado == self.Estado.CANCELADA:
+                self.costo_diagnostico = Decimal("0.00")
+                self.cancelada_sin_cobro = True
 
-        self._usuario_modifica = usuario
-        self._observacion_cambio = observacion
-        self.estado = nuevo_estado
-        self.save()
+            # Reingreso por garantía hacia EN_DIAGNOSTICO: abrir nuevo ciclo limpio conservando controles previos
+            if es_reingreso_garantia:
+                self.reingresado_por_garantia = True
+                self.ciclo += 1
+                self.costo_diagnostico = Decimal("0.00")
+                self.presupuesto_aprobado = None
+                self.cobro_parcial_pagado = False
+                self.monto_cobro_parcial = None
+                self.cancelada_sin_cobro = False
+
+            self._usuario_modifica = usuario
+            self._observacion_cambio = observacion
+            self.estado = nuevo_estado
+            self.save()
+
+            # Persistir snapshot inmutable del cobro al cerrar el ciclo (Entrega o Cancelación)
+            if nuevo_estado in (self.Estado.ENTREGADA, self.Estado.CANCELADA):
+                tipo_cierre = (
+                    CierreCobroOT.TipoCierre.ENTREGA
+                    if nuevo_estado == self.Estado.ENTREGADA
+                    else CierreCobroOT.TipoCierre.CANCELACION
+                )
+                CierreCobroOT.objects.update_or_create(
+                    orden=self,
+                    ciclo=self.ciclo,
+                    defaults={
+                        "tipo": tipo_cierre,
+                        "es_garantia": self.reingresado_por_garantia,
+                        "costo_diagnostico": Decimal("0.00") if self.cancelada_sin_cobro else self.costo_diagnostico,
+                        "total_repuestos_neto": Decimal(f"{float(self.total_repuestos_neto):.2f}"),
+                        "total_mano_obra_neto": Decimal(f"{float(self.total_mano_obra_neto):.2f}"),
+                        "subtotal_neto": Decimal(f"{self.subtotal_neto:.2f}"),
+                        "iva_19": Decimal(f"{self.iva_19:.2f}"),
+                        "total_a_pagar": Decimal(f"{self.total_a_pagar:.2f}"),
+                        "cantidad_repuestos": 0 if self.cancelada_sin_cobro else len(self.repuestos_actuales),
+                        "cantidad_horas": 0 if self.cancelada_sin_cobro else len(self.horas_actuales),
+                        "registrado_por": usuario,
+                    },
+                )
 
     def __str__(self):
         return f"OT-{self.numero:04d} | {self.vehiculo.patente} | {self.get_estado_display()}"
@@ -512,9 +563,10 @@ class RegistroHoras(models.Model):
 
 class ControlCalidad(models.Model):
     """Inspección técnica final obligatoria previa a la entrega (HU-07)."""
-    orden = models.OneToOneField(
-        OrdenTrabajo, on_delete=models.CASCADE, related_name="control_calidad"
+    orden = models.ForeignKey(
+        OrdenTrabajo, on_delete=models.CASCADE, related_name="controles_calidad"
     )
+    ciclo = models.PositiveIntegerField(default=1)
     jefe_taller = models.ForeignKey(
         User, on_delete=models.PROTECT, related_name="controles_calidad"
     )
@@ -524,26 +576,79 @@ class ControlCalidad(models.Model):
 
     def clean(self):
         super().clean()
-        if self.orden_id and self.orden.cobro_bloqueado:
-            raise ValidationError(
-                "No se puede modificar el Control de Calidad de una orden lista para entrega o cerrada."
-            )
+        if self.orden_id:
+            if self.orden.cobro_bloqueado:
+                raise ValidationError(
+                    "No se puede modificar el Control de Calidad de una orden lista para entrega o cerrada."
+                )
+            if self.pk is not None and self.ciclo != self.orden.ciclo:
+                raise ValidationError(
+                    "No se puede modificar un Control de Calidad perteneciente a un ciclo histórico cerrado."
+                )
 
     def save(self, *args, **kwargs):
+        if self.pk is None and self.orden_id:
+            self.ciclo = self.orden.ciclo
         self.full_clean()
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        if self.orden_id and self.orden.cobro_bloqueado:
+        if self.orden_id and (self.orden.cobro_bloqueado or self.ciclo != self.orden.ciclo):
             raise ValidationError(
-                "No se puede eliminar el Control de Calidad de una orden lista para entrega o cerrada."
+                "No se puede eliminar el Control de Calidad de una orden lista para entrega, cerrada o de un ciclo histórico."
             )
         return super().delete(*args, **kwargs)
 
     def __str__(self):
         estado_txt = "APROBADO" if self.aprobado else "PENDIENTE/RECHAZADO"
-        return f"Control de Calidad OT-{self.orden.numero:04d}: {estado_txt}"
+        return f"Control de Calidad OT-{self.orden.numero:04d} (Ciclo {self.ciclo}): {estado_txt}"
 
     class Meta:
         verbose_name = "Control de Calidad"
         verbose_name_plural = "Controles de Calidad"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["orden", "ciclo"],
+                name="unique_control_calidad_por_ciclo",
+            )
+        ]
+
+
+class CierreCobroOT(models.Model):
+    """Snapshot inmutable del cobro al cerrar un ciclo de atención (entrega o cancelación)."""
+    class TipoCierre(models.TextChoices):
+        ENTREGA = "ENT", "Cierre por Entrega"
+        CANCELACION = "CAN", "Cierre por Cancelación"
+
+    orden = models.ForeignKey(
+        OrdenTrabajo, on_delete=models.CASCADE, related_name="cierres_cobro"
+    )
+    ciclo = models.PositiveIntegerField(default=1)
+    tipo = models.CharField(max_length=3, choices=TipoCierre.choices, default=TipoCierre.ENTREGA)
+    es_garantia = models.BooleanField(default=False)
+    costo_diagnostico = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    total_repuestos_neto = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    total_mano_obra_neto = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    subtotal_neto = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    iva_19 = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    total_a_pagar = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    cantidad_repuestos = models.PositiveIntegerField(default=0)
+    cantidad_horas = models.PositiveIntegerField(default=0)
+    fecha_cierre = models.DateTimeField(auto_now_add=True)
+    registrado_por = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="cierres_cobro_registrados"
+    )
+
+    def __str__(self):
+        return f"Cierre OT-{self.orden.numero:04d} (Ciclo {self.ciclo} - {self.get_tipo_display()}): ${self.total_a_pagar:,.0f} CLP"
+
+    class Meta:
+        verbose_name = "Cierre de Cobro"
+        verbose_name_plural = "Cierres de Cobro"
+        ordering = ["-ciclo", "-fecha_cierre"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["orden", "ciclo"],
+                name="unique_cierre_cobro_por_ciclo",
+            )
+        ]

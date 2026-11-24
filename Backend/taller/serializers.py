@@ -11,6 +11,7 @@ from .models import (
     DetalleRepuesto,
     RegistroHoras,
     ControlCalidad,
+    CierreCobroOT,
 )
 
 
@@ -252,20 +253,24 @@ class ControlCalidadSerializer(serializers.ModelSerializer):
     class Meta:
         model = ControlCalidad
         fields = [
-            'id', 'orden', 'jefe_taller', 'jefe_taller_detalle',
+            'id', 'orden', 'ciclo', 'jefe_taller', 'jefe_taller_detalle',
             'aprobado', 'observaciones', 'fecha'
         ]
-        read_only_fields = ['fecha']
+        read_only_fields = ['fecha', 'ciclo']
 
     def validate(self, attrs):
         orden = attrs.get('orden') or (self.instance.orden if self.instance else None)
-        if self.instance and self.instance.orden.cobro_bloqueado:
+        if self.instance and (self.instance.orden.cobro_bloqueado or self.instance.ciclo != self.instance.orden.ciclo):
             raise serializers.ValidationError(
-                "No se puede modificar el Control de Calidad de una orden lista para entrega o cerrada."
+                "No se puede modificar el Control de Calidad de una orden cerrada o de un ciclo histórico."
             )
         if orden and orden.cobro_bloqueado:
             raise serializers.ValidationError(
                 "No se puede modificar el Control de Calidad de una orden lista para entrega o cerrada."
+            )
+        if self.instance is None and orden and orden.controles_calidad.filter(ciclo=orden.ciclo).exists():
+            raise serializers.ValidationError(
+                "Ya existe un Control de Calidad registrado para el ciclo actual de esta orden."
             )
         aprobado = attrs.get('aprobado')
         if aprobado and orden and not orden.registro_horas.filter(ciclo=orden.ciclo).exists():
@@ -273,6 +278,21 @@ class ControlCalidadSerializer(serializers.ModelSerializer):
                 "No se puede aprobar el Control de Calidad sin que existan Horas Hombre registradas en la orden."
             )
         return attrs
+
+
+class CierreCobroOTSerializer(serializers.ModelSerializer):
+    """Snapshot inmutable de cobros cerrados por ciclo de atención."""
+    tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
+
+    class Meta:
+        model = CierreCobroOT
+        fields = [
+            'id', 'orden', 'ciclo', 'tipo', 'tipo_display', 'es_garantia',
+            'costo_diagnostico', 'total_repuestos_neto', 'total_mano_obra_neto',
+            'subtotal_neto', 'iva_19', 'total_a_pagar',
+            'cantidad_repuestos', 'cantidad_horas', 'fecha_cierre',
+        ]
+        read_only_fields = fields
 
 
 class OrdenTrabajoSerializer(serializers.ModelSerializer):
@@ -291,6 +311,7 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
     repuestos_detalle = DetalleRepuestoSerializer(source='repuestos_actuales', many=True, read_only=True)
     registro_horas = RegistroHorasSerializer(source='horas_actuales', many=True, read_only=True)
     control_calidad = ControlCalidadSerializer(read_only=True)
+    cierres_cobro = CierreCobroOTSerializer(many=True, read_only=True)
     total_repuestos_neto = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     total_mano_obra_neto = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     cliente_notificado_para_entrega = serializers.BooleanField(read_only=True)
@@ -336,6 +357,7 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
             'repuestos_detalle',
             'registro_horas',
             'control_calidad',
+            'cierres_cobro',
             'total_repuestos_neto',
             'total_mano_obra_neto',
             'subtotal_neto',
@@ -362,19 +384,14 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'estado': 'Usa la acción de cambio de estado de la orden.'})
 
         if self.instance and self.instance.cobro_bloqueado:
-            es_preparacion_garantia = (
-                self.instance.estado == OrdenTrabajo.Estado.ENTREGADA
-                and attrs.get('reingresado_por_garantia') is True
-            )
-            if not es_preparacion_garantia:
-                if 'costo_diagnostico' in attrs and attrs['costo_diagnostico'] != self.instance.costo_diagnostico:
-                    raise serializers.ValidationError({
-                        'costo_diagnostico': 'No se puede modificar el costo de diagnóstico en una orden aprobada o cerrada.'
-                    })
-                if 'reingresado_por_garantia' in attrs and attrs['reingresado_por_garantia'] != self.instance.reingresado_por_garantia:
-                    raise serializers.ValidationError({
-                        'reingresado_por_garantia': 'No se puede modificar la marca de garantía en una orden lista o cancelada.'
-                    })
+            if 'costo_diagnostico' in attrs and attrs['costo_diagnostico'] != self.instance.costo_diagnostico:
+                raise serializers.ValidationError({
+                    'costo_diagnostico': 'No se puede modificar el costo de diagnóstico en una orden aprobada o cerrada.'
+                })
+            if 'reingresado_por_garantia' in attrs and attrs['reingresado_por_garantia'] != self.instance.reingresado_por_garantia:
+                raise serializers.ValidationError({
+                    'reingresado_por_garantia': 'Usa la acción de reingreso por garantía para reabrir una orden entregada.'
+                })
 
         cliente = attrs.get('cliente') or (self.instance.cliente if self.instance else None)
         vehiculo = attrs.get('vehiculo') or (self.instance.vehiculo if self.instance else None)

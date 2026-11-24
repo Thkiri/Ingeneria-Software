@@ -66,6 +66,9 @@ export default function VistaCobros({ ordenes = [], onSelectOrden }) {
                     </div>
                     <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
                       {o.cliente_detalle?.nombre_completo} · {o.estado_display}
+                      {(o.cierres_cobro || []).some((c) => c.ciclo < (o.ciclo || 1)) && (
+                        <span> · Ciclo {o.ciclo} (con cierre previo)</span>
+                      )}
                     </div>
                   </div>
                   <div style={{ fontWeight: 700, fontSize: '14px', color: '#0F172A' }}>
@@ -91,7 +94,7 @@ export default function VistaCobros({ ordenes = [], onSelectOrden }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>
-                  DOCUMENTO DE COBRO · OT-{String(ordenSeleccionada.numero).padStart(4, '0')}
+                  DOCUMENTO DE COBRO · OT-{String(ordenSeleccionada.numero).padStart(4, '0')} · CICLO {ordenSeleccionada.ciclo || 1}
                 </div>
                 <h3 style={{ fontSize: '22px', fontWeight: 700, color: '#0F172A', marginTop: '4px' }}>
                   {ordenSeleccionada.vehiculo_detalle?.patente} · {ordenSeleccionada.vehiculo_detalle?.marca} {ordenSeleccionada.vehiculo_detalle?.modelo}
@@ -177,6 +180,61 @@ export default function VistaCobros({ ordenes = [], onSelectOrden }) {
                 </span>
               </div>
             </div>
+
+            {(ordenSeleccionada.cierres_cobro || []).filter((c) => c.ciclo < (ordenSeleccionada.ciclo || 1)).length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>
+                  Cobros cerrados de ciclos anteriores
+                </div>
+                {(ordenSeleccionada.cierres_cobro || [])
+                  .filter((c) => c.ciclo < (ordenSeleccionada.ciclo || 1))
+                  .map((cierre) => (
+                    <div
+                      key={cierre.id}
+                      style={{
+                        background: '#FFFFFF',
+                        borderRadius: '10px',
+                        padding: '16px 20px',
+                        border: '1px solid #CBD5E1',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        fontSize: '13px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <span style={{ fontWeight: 700, color: '#0F172A' }}>
+                          Ciclo {cierre.ciclo} · {cierre.tipo_display}
+                        </span>
+                        <span style={{ fontSize: '11px', color: '#64748B' }}>
+                          {cierre.fecha_cierre ? new Date(cierre.fecha_cierre).toLocaleDateString('es-CL') : ''}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                        <span>Diagnóstico inicial</span>
+                        <span>{formatCLP(cierre.costo_diagnostico)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                        <span>Repuestos ({cierre.cantidad_repuestos} ítems)</span>
+                        <span>{formatCLP(cierre.total_repuestos_neto)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                        <span>Mano de obra ({cierre.cantidad_horas} registros)</span>
+                        <span>{formatCLP(cierre.total_mano_obra_neto)}</span>
+                      </div>
+                      <div style={{ borderTop: '1px dashed #E2E8F0', margin: '4px 0' }} />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#334155', fontWeight: 600 }}>
+                        <span>Subtotal neto / IVA 19%</span>
+                        <span>{formatCLP(cierre.subtotal_neto)} + {formatCLP(cierre.iva_19)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: '#0F172A', fontSize: '14px', paddingTop: '2px' }}>
+                        <span>Total cobrado (Ciclo {cierre.ciclo})</span>
+                        <span>{formatCLP(cierre.total_a_pagar)} CLP</span>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               <button

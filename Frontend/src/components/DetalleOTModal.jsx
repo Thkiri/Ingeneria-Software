@@ -4,6 +4,7 @@ import {
   cambiarEstadoOrden,
   notificarClienteOrden,
   registrarCobroParcialOrden,
+  reingresoGarantiaOrden,
   updateOrden,
   createRepuesto,
   deleteRepuesto,
@@ -170,16 +171,11 @@ export default function DetalleOTModal({
     setErrorMsg('');
     setSuccessMsg('');
     try {
-      await updateOrden(orden.numero, {
-        reingresado_por_garantia: true,
-        costo_diagnostico: 0,
-      });
-      setEsGarantia(true);
-      const updated = await cambiarEstadoOrden(
+      const updated = await reingresoGarantiaOrden(
         orden.numero,
-        'DIA',
         'Reingreso por garantía autorizado por Jefe de Taller (Diagnóstico $0, MO $0)'
       );
+      setEsGarantia(Boolean(updated.reingresado_por_garantia));
       setPresupuestoAprobado(updated.presupuesto_aprobado ?? null);
       setObsCalidad('');
       onStateChanged(updated);

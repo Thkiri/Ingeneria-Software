@@ -195,9 +195,9 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = OrdenTrabajo.objects.select_related(
-            'cliente', 'vehiculo', 'mecanico_asignado', 'creado_por', 'control_calidad'
+            'cliente', 'vehiculo', 'mecanico_asignado', 'creado_por'
         ).prefetch_related(
-            'historial_estados', 'repuestos_detalle', 'registro_horas'
+            'historial_estados', 'repuestos_detalle', 'registro_horas', 'controles_calidad', 'cierres_cobro'
         ).all().order_by('-numero')
 
         estado = self.request.query_params.get('estado')
@@ -253,8 +253,45 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
             )
 
         usuario = request.user if request.user.is_authenticated else None
+        reingreso_garantia = bool(request.data.get('reingreso_garantia', False))
         try:
-            orden.registrar_cambio_estado(nuevo_estado, usuario=usuario, observacion=observacion)
+            orden.registrar_cambio_estado(
+                nuevo_estado,
+                usuario=usuario,
+                observacion=observacion,
+                reingreso_garantia=reingreso_garantia,
+            )
+        except ValidationError as e:
+            mensaje = e.messages[0] if hasattr(e, 'messages') else str(e)
+            return Response({"error": mensaje}, status=status.HTTP_400_BAD_REQUEST)
+
+        if hasattr(orden, '_prefetched_objects_cache'):
+            orden._prefetched_objects_cache = {}
+        serializer = self.get_serializer(orden)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='reingreso-garantia')
+    def reingreso_garantia(self, request, pk=None):
+        """
+        Reabre de forma atómica una orden Entregada a 'En Diagnóstico' por garantía
+        (diagnóstico $0, mano de obra $0, nuevo ciclo limpio preservando controles previos).
+        """
+        orden = self.get_object()
+        observacion = request.data.get(
+            'observacion',
+            'Reingreso por garantía autorizado por Jefe de Taller (Diagnóstico $0, MO $0)',
+        )
+        if not isinstance(observacion, str):
+            return Response({"error": "La observación debe ser texto."}, status=status.HTTP_400_BAD_REQUEST)
+
+        usuario = request.user if request.user.is_authenticated else None
+        try:
+            orden.registrar_cambio_estado(
+                OrdenTrabajo.Estado.EN_DIAGNOSTICO,
+                usuario=usuario,
+                observacion=observacion.strip() or 'Reingreso por garantía autorizado',
+                reingreso_garantia=True,
+            )
         except ValidationError as e:
             mensaje = e.messages[0] if hasattr(e, 'messages') else str(e)
             return Response({"error": mensaje}, status=status.HTTP_400_BAD_REQUEST)

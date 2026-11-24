@@ -113,6 +113,13 @@ export async function registrarCobroParcialOrden(numero, observacion = '') {
   });
 }
 
+export async function reingresoGarantiaOrden(numero, observacion = '') {
+  return await apiRequest(`/ordenes/${numero}/reingreso-garantia/`, {
+    method: 'POST',
+    body: JSON.stringify({ observacion }),
+  });
+}
+
 // ========================================================
 // Clientes
 // ========================================================

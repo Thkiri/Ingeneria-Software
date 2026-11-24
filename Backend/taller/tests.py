@@ -1,6 +1,8 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from taller.models import ControlCalidad
+
 
 class TecniMotorSprint4E2ETests(TestCase):
     def setUp(self):
@@ -164,13 +166,21 @@ class TecniMotorSprint4E2ETests(TestCase):
         self.assertEqual(res_pub.status_code, 200)
         self.assertEqual(res_pub.data['estado'], 'LST')
 
-        # Entrega y Reingreso por Garantía ($0 diagnóstico)
+        # Entrega y Reingreso por Garantía atómico ($0 diagnóstico, $0 MO)
         res_ent = self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'ENT'}, format='json')
         self.assertEqual(res_ent.status_code, 200)
         self.assertEqual(res_ent.data['estado'], 'ENT')
 
-        self.client.patch(f'/api/ordenes/{ot_num}/', {'reingresado_por_garantia': True, 'costo_diagnostico': 0}, format='json')
-        res_gar = self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'DIA', 'observacion': 'Garantía'}, format='json')
+        # PATCH directo sobre orden ENT no debe poder rebajar el cobro sin reabrir
+        res_patch_ent = self.client.patch(
+            f'/api/ordenes/{ot_num}/',
+            {'reingresado_por_garantia': True, 'costo_diagnostico': 0},
+            format='json',
+        )
+        self.assertEqual(res_patch_ent.status_code, 400)
+        self.assertEqual(float(self.client.get(f'/api/ordenes/{ot_num}/').data['total_a_pagar']), 113050.0)
+
+        res_gar = self.client.post(f'/api/ordenes/{ot_num}/reingreso-garantia/', {'observacion': 'Garantía'}, format='json')
         self.assertEqual(res_gar.status_code, 200)
         self.assertEqual(res_gar.data['estado'], 'DIA')
         self.assertEqual(float(res_gar.data['costo_diagnostico']), 0.0)
@@ -180,6 +190,8 @@ class TecniMotorSprint4E2ETests(TestCase):
         self.assertIsNone(res_gar.data['control_calidad'])
         self.assertEqual(len(res_gar.data['registro_horas']), 0)
         self.assertEqual(len(res_gar.data['repuestos_detalle']), 0)
+        # El control de calidad del ciclo 1 se preserva en la BD
+        self.assertTrue(ControlCalidad.objects.filter(orden_id=ot_num, ciclo=1, aprobado=True).exists())
 
     def _crear_escenario_base(self):
         res_u = self.client.post('/api/usuarios/', {
@@ -291,15 +303,42 @@ class TecniMotorSprint4E2ETests(TestCase):
         self.client.post(f'/api/ordenes/{ot_num}/notificar-cliente/', {}, format='json')
         self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'ENT'}, format='json')
 
-        # Reingreso por garantía
-        self.client.patch(f'/api/ordenes/{ot_num}/', {'reingresado_por_garantia': True, 'costo_diagnostico': 0}, format='json')
-        res_gar = self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'DIA'}, format='json')
+        # Reingreso por garantía atómico: PATCH directo en ENT está bloqueado y no altera el cobro
+        res_ent_before = self.client.get(f'/api/ordenes/{ot_num}/')
+        total_entregada = float(res_ent_before.data['total_a_pagar'])
+        self.assertEqual(total_entregada, 59500.0)
+        self.assertEqual(
+            self.client.patch(
+                f'/api/ordenes/{ot_num}/',
+                {'reingresado_por_garantia': True, 'costo_diagnostico': 0},
+                format='json',
+            ).status_code,
+            400,
+        )
+        self.assertEqual(float(self.client.get(f'/api/ordenes/{ot_num}/').data['total_a_pagar']), 59500.0)
+
+        res_gar = self.client.post(f'/api/ordenes/{ot_num}/reingreso-garantia/', {}, format='json')
         self.assertEqual(res_gar.status_code, 200)
         self.assertEqual(float(res_gar.data['costo_diagnostico']), 0.0)
         self.assertEqual(float(res_gar.data['total_mano_obra_neto']), 0.0)
         self.assertEqual(float(res_gar.data['total_a_pagar']), 0.0)
         self.assertIsNone(res_gar.data['presupuesto_aprobado'])
         self.assertIsNone(res_gar.data['control_calidad'])
+        # El cierre de cobro del ciclo 1 queda persistido y consultable para VistaCobros
+        self.assertEqual(len(res_gar.data['cierres_cobro']), 1)
+        cierre_1 = res_gar.data['cierres_cobro'][0]
+        self.assertEqual(cierre_1['ciclo'], 1)
+        self.assertEqual(cierre_1['tipo'], 'ENT')
+        self.assertEqual(float(cierre_1['costo_diagnostico']), 15000.0)
+        self.assertEqual(float(cierre_1['total_mano_obra_neto']), 35000.0)
+        self.assertEqual(float(cierre_1['subtotal_neto']), 50000.0)
+        self.assertEqual(float(cierre_1['iva_19']), 9500.0)
+        self.assertEqual(float(cierre_1['total_a_pagar']), 59500.0)
+        # El control de calidad del ciclo 1 permanece intacto como respaldo de la entrega original
+        cc_ciclo_1 = ControlCalidad.objects.get(orden_id=ot_num, ciclo=1)
+        self.assertTrue(cc_ciclo_1.aprobado)
+        self.assertEqual(self.client.patch(f'/api/controles-calidad/{cc_ciclo_1.id}/', {'aprobado': False}, format='json').status_code, 400)
+        self.assertEqual(self.client.delete(f'/api/controles-calidad/{cc_ciclo_1.id}/').status_code, 400)
 
         # No puede saltar a REP sin nueva aprobación del cliente
         self.assertEqual(
@@ -385,3 +424,25 @@ class TecniMotorSprint4E2ETests(TestCase):
         res_can_ok = self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'CAN'}, format='json')
         self.assertEqual(res_can_ok.status_code, 200)
         self.assertEqual(res_can_ok.data['estado'], 'CAN')
+
+    def test_cancelacion_al_ingreso_cobra_cero(self):
+        """Cancelar una OT en INGRESADA (incluso con repuesto cargado) deja el cobro total en $0."""
+        _, ot_num = self._crear_escenario_base()
+        res_rep = self.client.post('/api/repuestos/', {
+            'orden': ot_num,
+            'nombre_pieza': 'Filtro previo',
+            'cantidad': 1,
+            'precio_unitario': 10000,
+        }, format='json')
+        self.assertEqual(res_rep.status_code, 201)
+
+        res_can = self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'CAN'}, format='json')
+        self.assertEqual(res_can.status_code, 200)
+        self.assertEqual(res_can.data['estado'], 'CAN')
+        self.assertEqual(float(res_can.data['costo_diagnostico']), 0.0)
+        self.assertEqual(float(res_can.data['total_repuestos_neto']), 0.0)
+        self.assertEqual(float(res_can.data['subtotal_neto']), 0.0)
+        self.assertEqual(float(res_can.data['iva_19']), 0.0)
+        self.assertEqual(float(res_can.data['total_a_pagar']), 0.0)
+        self.assertEqual(len(res_can.data['cierres_cobro']), 1)
+        self.assertEqual(float(res_can.data['cierres_cobro'][0]['total_a_pagar']), 0.0)
