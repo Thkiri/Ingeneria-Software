@@ -205,6 +205,22 @@ class OrdenTrabajo(models.Model):
                 observacion=obs,
             )
 
+    @property
+    def cliente_notificado_para_entrega(self):
+        if self.estado not in (self.Estado.LISTA, self.Estado.ENTREGADA):
+            return False
+        historial = sorted(self.historial_estados.all(), key=lambda evento: (evento.fecha, evento.pk), reverse=True)
+        if self.estado == self.Estado.ENTREGADA and historial:
+            if (historial[0].estado_anterior, historial[0].estado_nuevo) != (self.Estado.LISTA, self.Estado.ENTREGADA):
+                return False
+            historial = historial[1:]
+        for evento in historial:
+            if evento.estado_nuevo != self.Estado.LISTA or evento.estado_anterior != self.Estado.LISTA:
+                break
+            if evento.observacion.startswith(HistorialEstadoOT.PREFIJO_AVISO_RETIRO):
+                return True
+        return False
+
     def registrar_cambio_estado(self, nuevo_estado, usuario=None, observacion=""):
         """
         Método de lógica de negocio para transicionar estado con trazabilidad y
@@ -238,8 +254,15 @@ class OrdenTrabajo(models.Model):
             raise ValidationError("Debe asignar un mecánico responsable antes de pasar a 'En Diagnóstico'.")
 
         # 5. Estado del presupuesto para EN_REPARACION
-        if nuevo_estado == self.Estado.EN_REPARACION and self.presupuesto_aprobado is False:
-            raise ValidationError("No se puede avanzar a 'En Reparación' con presupuesto rechazado por el cliente.")
+        if (
+            nuevo_estado == self.Estado.EN_REPARACION
+            and self.estado in (self.Estado.EN_DIAGNOSTICO, self.Estado.ESPERA_REPUESTOS)
+            and self.presupuesto_aprobado is not True
+        ):
+            raise ValidationError("Se requiere la aprobación del cliente antes de pasar a 'En Reparación'.")
+
+        if nuevo_estado == self.Estado.ENTREGADA and not self.cliente_notificado_para_entrega:
+            raise ValidationError("Registra la llamada al cliente antes de marcar la entrega.")
 
         # 6. Exigir Horas Hombre registradas para CONTROL_CALIDAD y LISTA_ENTREGA (HU-05 / HU-07)
         if nuevo_estado in [self.Estado.CONTROL_CALIDAD, self.Estado.LISTA]:
@@ -275,6 +298,8 @@ class OrdenTrabajo(models.Model):
 
 
 class HistorialEstadoOT(models.Model):
+    PREFIJO_AVISO_RETIRO = "Notificación telefónica realizada"
+
     orden = models.ForeignKey(
         OrdenTrabajo, on_delete=models.CASCADE, related_name="historial_estados"
     )
@@ -364,6 +389,10 @@ class RegistroHoras(models.Model):
 
     def clean(self):
         super().clean()
+        if self.horas is not None and self.horas <= 0:
+            raise ValidationError({"horas": "Las horas deben ser mayores que cero."})
+        if self.tarifa is not None and self.tarifa < 0:
+            raise ValidationError({"tarifa": "La tarifa debe ser cero o mayor."})
         if self.orden_id and self.orden.estado in [OrdenTrabajo.Estado.INGRESADA, OrdenTrabajo.Estado.EN_DIAGNOSTICO]:
             raise ValidationError(
                 "No se pueden registrar las horas en diagnóstico. Las horas se imputan a partir de 'En Reparación'."

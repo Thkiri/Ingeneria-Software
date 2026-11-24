@@ -15,14 +15,12 @@ export default function DetalleRecepcion({
 }) {
   const repuestosList = orden.repuestos_detalle || [];
   const horasList = orden.registro_horas || [];
-  const historialList = orden.historial_estados || [];
   const telefonoCliente = orden.cliente_detalle?.telefono || 'Sin teléfono';
   const emailCliente = orden.cliente_detalle?.email || '';
   const totalAPagar = Math.round(Number(orden.total_a_pagar || 0)).toLocaleString('es-CL');
 
-  const notificacionPrevia = historialList.find((h) =>
-    (h.observacion || '').toLowerCase().includes('notificación telefónica')
-  );
+  const notificacionPrevia = orden.cliente_notificado_para_entrega;
+  const puedeEntregar = orden.estado === 'LST' && notificacionPrevia;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -252,18 +250,18 @@ export default function DetalleRecepcion({
               </div>
 
               <div style={{ fontSize: '13px', color: '#334155', lineHeight: '1.5' }}>
-                Confirma el retiro antes de registrar la entrega.
+                {notificacionPrevia ? 'Confirma el retiro antes de registrar la entrega.' : 'Registra la llamada al cliente para habilitar la entrega.'}
               </div>
 
               <button
                 className="btn-primary"
-                disabled={loading || orden.estado !== 'LST'}
+                disabled={loading || !puedeEntregar}
                 onClick={onEntregarVehiculo}
                 style={{
                   width: '100%',
                   justifyContent: 'center',
-                  opacity: orden.estado === 'LST' ? 1 : 0.5,
-                  cursor: orden.estado === 'LST' ? 'pointer' : 'not-allowed'
+                  opacity: puedeEntregar ? 1 : 0.5,
+                  cursor: puedeEntregar ? 'pointer' : 'not-allowed'
                 }}
               >
                 {orden.estado === 'ENT' ? 'Vehículo ya Entregado' : 'Marcar como Entregada'}

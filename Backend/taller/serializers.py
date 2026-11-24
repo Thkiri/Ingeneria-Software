@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import (
@@ -185,6 +187,9 @@ class HistorialEstadoOTSerializer(serializers.ModelSerializer):
 
 
 class DetalleRepuestoSerializer(serializers.ModelSerializer):
+    cantidad = serializers.IntegerField(min_value=1, required=False)
+    precio_unitario = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0)
+
     """Serializador para el costeo de repuestos de la OT (HU-10)."""
     subtotal = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
@@ -194,6 +199,9 @@ class DetalleRepuestoSerializer(serializers.ModelSerializer):
 
 
 class RegistroHorasSerializer(serializers.ModelSerializer):
+    horas = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=Decimal("0.01"))
+    tarifa = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0)
+
     """Serializador para el registro de horas hombre (HU-05)."""
     costo = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     mecanico_detalle = UserSimpleSerializer(source='mecanico', read_only=True)
@@ -255,6 +263,7 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
     control_calidad = ControlCalidadSerializer(read_only=True)
     total_repuestos_neto = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     total_mano_obra_neto = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    cliente_notificado_para_entrega = serializers.BooleanField(read_only=True)
     subtotal_neto = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     iva_19 = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     total_a_pagar = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
@@ -286,6 +295,7 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
             'repuestos_requeridos',
             'observaciones',
             'historial_estados',
+            'cliente_notificado_para_entrega',
             'repuestos_detalle',
             'registro_horas',
             'control_calidad',
@@ -305,6 +315,10 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
         Validación de coherencia de negocio (datos.md):
         Garantiza que el vehículo seleccionado pertenezca al cliente de la orden.
         """
+        estado = attrs.get('estado')
+        estado_actual = self.instance.estado if self.instance else OrdenTrabajo.Estado.INGRESADA
+        if estado is not None and estado != estado_actual:
+            raise serializers.ValidationError({'estado': 'Usa la acción de cambio de estado de la orden.'})
         cliente = attrs.get('cliente') or (self.instance.cliente if self.instance else None)
         vehiculo = attrs.get('vehiculo') or (self.instance.vehiculo if self.instance else None)
 

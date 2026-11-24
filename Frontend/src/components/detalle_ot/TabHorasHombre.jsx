@@ -64,13 +64,13 @@ export default function TabHorasHombre({
                 setNuevaHora({
                   ...nuevaHora,
                   mecanico: selectedId,
-                  tarifa: mecObj?.tarifa_hora || 15000,
+                  tarifa: mecObj?.tarifa_hora ?? 15000,
                 });
               }}
             >
               {mecanicos.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.nombre_completo || m.username} ({formatCLP(m.tarifa_hora || 15000)}/h)
+                  {m.nombre_completo || m.username} ({formatCLP(m.tarifa_hora ?? 15000)}/h)
                 </option>
               ))}
             </select>
@@ -82,8 +82,9 @@ export default function TabHorasHombre({
             </label>
             <input
               type="number"
-              step="0.5"
-              min="0.5"
+              step="0.01"
+              min="0.01"
+              required
               className="input-control"
               style={{ height: '40px', fontSize: '13px' }}
               value={nuevaHora.horas}

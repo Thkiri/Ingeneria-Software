@@ -67,7 +67,7 @@ export default function DetalleOTModal({
   const [nuevaHora, setNuevaHora] = useState({
     mecanico: orden.mecanico_asignado || (mecanicos[0]?.id ?? ''),
     horas: '1.5',
-    tarifa: orden.mecanico_detalle?.tarifa_hora || 15000,
+    tarifa: orden.mecanico_detalle?.tarifa_hora ?? 15000,
     descripcion: '',
   });
 
@@ -200,8 +200,8 @@ export default function DetalleOTModal({
       const creado = await createRepuesto({
         orden: orden.numero,
         nombre_pieza: nuevoRepuesto.nombre_pieza.trim(),
-        cantidad: Number(nuevoRepuesto.cantidad) || 1,
-        precio_unitario: Number(nuevoRepuesto.precio_unitario) || 0,
+        cantidad: Number(nuevoRepuesto.cantidad),
+        precio_unitario: Number(nuevoRepuesto.precio_unitario),
       });
       setRepuestoConfirmado(creado);
       await recargarOrdenActual();
@@ -237,7 +237,7 @@ export default function DetalleOTModal({
         orden: orden.numero,
         mecanico: Number(nuevaHora.mecanico),
         horas: Number(nuevaHora.horas),
-        tarifa: Number(nuevaHora.tarifa) || 15000,
+        tarifa: Number(nuevaHora.tarifa ?? 15000),
         descripcion: nuevaHora.descripcion.trim() || 'Servicio mecánico en taller',
       });
       setNuevaHora((prev) => ({ ...prev, descripcion: '' }));

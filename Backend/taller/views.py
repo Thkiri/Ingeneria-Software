@@ -243,13 +243,18 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
         notificó telefónicamente al cliente que su vehículo está listo para retiro (HU-09).
         """
         orden = self.get_object()
-        telefono = orden.cliente.telefono or 'Sin teléfono'
-        observacion_extra = request.data.get('observacion', '').strip()
-        detalle_obs = (
-            observacion_extra
-            if observacion_extra
-            else f"Notificación telefónica realizada al {telefono}: Vehículo listo para retiro (Total: ${orden.total_a_pagar:,.0f} CLP)"
-        )
+        if orden.estado != OrdenTrabajo.Estado.LISTA:
+            return Response(
+                {"error": "Solo puedes registrar el aviso cuando la orden está lista para entrega."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        observacion_extra = request.data.get('observacion', '')
+        if not isinstance(observacion_extra, str):
+            return Response({"error": "La observación debe ser texto."}, status=status.HTTP_400_BAD_REQUEST)
+
+        detalle_obs = f"{HistorialEstadoOT.PREFIJO_AVISO_RETIRO}: vehículo listo para retiro."
+        if observacion_extra.strip():
+            detalle_obs += f" {observacion_extra.strip()}"
 
         usuario = request.user if request.user.is_authenticated else None
         HistorialEstadoOT.objects.create(

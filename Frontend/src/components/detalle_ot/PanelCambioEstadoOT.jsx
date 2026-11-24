@@ -37,13 +37,19 @@ export default function PanelCambioEstadoOT({
           const tieneHoras = (orden.registro_horas || []).length > 0;
           const calidadAprobada = Boolean(orden.control_calidad?.aprobado);
 
-          const blockedByBudget = est.code === 'REP' && presupuestoAprobado === false;
+          const blockedByBudget = est.code === 'REP' && ['DIA', 'ESP'].includes(orden.estado)
+            && presupuestoAprobado !== true;
+          const blockedByNotice = est.code === 'ENT' && !orden.cliente_notificado_para_entrega;
           const blockedCalSinHoras = est.code === 'CAL' && !tieneHoras;
           const blockedLst = est.code === 'LST' && (!tieneHoras || !calidadAprobada);
-          const isBlocked = blockedByBudget || blockedCalSinHoras || blockedLst;
+          const isBlocked = blockedByBudget || blockedByNotice || blockedCalSinHoras || blockedLst;
 
           let blockReason = '';
-          if (blockedByBudget) blockReason = ' (Presupuesto rechazado)';
+          if (blockedByBudget) {
+            blockReason = presupuestoAprobado === false
+              ? ' (Presupuesto rechazado)'
+              : ' (Falta aprobación del cliente)';
+          } else if (blockedByNotice) blockReason = ' (Falta registrar la llamada)';
           else if (blockedCalSinHoras) blockReason = ' (Faltan horas hombre)';
           else if (blockedLst) {
             blockReason = !tieneHoras
