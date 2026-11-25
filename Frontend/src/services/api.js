@@ -55,6 +55,17 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 // ========================================================
+// Autenticación de Personal del Taller
+// ========================================================
+
+export async function loginTaller(username, password) {
+  return await apiRequest('/login/', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+// ========================================================
 // Órdenes de Trabajo (OT)
 // ========================================================
 

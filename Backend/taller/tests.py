@@ -485,3 +485,32 @@ class TecniMotorSprint4E2ETests(TestCase):
             'descripcion': 'Intento en espera de repuestos',
         }, format='json')
         self.assertEqual(res_h_esp.status_code, 400)
+
+    def test_login_real_usuarios_creados_y_deshabilitados(self):
+        """Permite iniciar sesión a usuarios creados en /api/usuarios/ y bloquea cuentas deshabilitadas."""
+        res_u = self.client.post('/api/usuarios/', {
+            'username': 'nuevo.mec',
+            'first_name': 'Matias',
+            'last_name': 'Rojas',
+            'rol': 'MECANICO',
+            'password': 'claveSegura2026',
+            'tarifa_hora': 16000,
+        }, format='json')
+        self.assertEqual(res_u.status_code, 201)
+        u_id = res_u.data['id']
+
+        # Login exitoso con contraseña real
+        res_ok = self.client.post('/api/login/', {'username': 'nuevo.mec', 'password': 'claveSegura2026'}, format='json')
+        self.assertEqual(res_ok.status_code, 200)
+        self.assertEqual(res_ok.data['username'], 'nuevo.mec')
+        self.assertEqual(res_ok.data['rol'], 'MECANICO')
+        self.assertEqual(res_ok.data['vistaInicial'], 'mecanico-ordenes')
+
+        # Contraseña incorrecta -> 401
+        res_bad = self.client.post('/api/login/', {'username': 'nuevo.mec', 'password': 'otra'}, format='json')
+        self.assertEqual(res_bad.status_code, 401)
+
+        # Cuenta deshabilitada (baja lógica) -> 403
+        self.client.delete(f'/api/usuarios/{u_id}/')
+        res_off = self.client.post('/api/login/', {'username': 'nuevo.mec', 'password': 'claveSegura2026'}, format='json')
+        self.assertEqual(res_off.status_code, 403)

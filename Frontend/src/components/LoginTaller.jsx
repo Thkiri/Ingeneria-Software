@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Wrench, ArrowRight, Users } from 'lucide-react';
+import { loginTaller } from '../services/api';
 
 export const USUARIOS_DEMO = {
   JEFE_TALLER: {
@@ -55,39 +56,25 @@ export const USUARIOS_DEMO = {
 export default function LoginTaller({ onLoginSuccess, onVolverACliente }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const cleanUser = username.trim().toLowerCase();
-
-    // Validar contra usuarios configurados o alias comunes
-    if ((cleanUser === 'claudio.munoz' || cleanUser === 'jefe' || cleanUser === 'admin') && (password === 'jefe123' || password === 'admin123' || password === 'taller2026')) {
-      setError(false);
-      onLoginSuccess(USUARIOS_DEMO.JEFE_TALLER);
-      return;
+    setErrorMsg('');
+    setLoading(true);
+    try {
+      const perfil = await loginTaller(username.trim(), password);
+      onLoginSuccess(perfil);
+    } catch (err) {
+      setErrorMsg(err.message || 'Usuario o contraseña incorrectos.');
+    } finally {
+      setLoading(false);
     }
-    if ((cleanUser === 'carolina.perez' || cleanUser === 'recepcion') && (password === 'recepcion123' || password === 'taller2026')) {
-      setError(false);
-      onLoginSuccess(USUARIOS_DEMO.RECEPCIONISTA);
-      return;
-    }
-    if ((cleanUser === 'diego.soto' || cleanUser === 'mecanico1' || cleanUser === 'mecanico') && (password === 'mecanico123' || password === 'taller2026')) {
-      setError(false);
-      onLoginSuccess(USUARIOS_DEMO.MECANICO);
-      return;
-    }
-    if ((cleanUser === 'felipe.vargas' || cleanUser === 'mecanico2') && (password === 'mecanico123' || password === 'taller2026')) {
-      setError(false);
-      onLoginSuccess(USUARIOS_DEMO.MECANICO_FELIPE);
-      return;
-    }
-
-    setError(true);
   };
 
   const accesoRapidoDemo = (perfil) => {
-    setError(false);
+    setErrorMsg('');
     onLoginSuccess(perfil);
   };
 
@@ -172,7 +159,7 @@ export default function LoginTaller({ onLoginSuccess, onVolverACliente }) {
           </div>
 
           {/* Alerta de Error (IngresoERROR.png) */}
-          {error && (
+          {errorMsg && (
             <div style={{
               background: '#FEF2F2',
               border: '1px solid #FECACA',
@@ -181,7 +168,7 @@ export default function LoginTaller({ onLoginSuccess, onVolverACliente }) {
               color: '#991B1B'
             }}>
               <div style={{ fontWeight: 700, fontSize: '13px' }}>
-                Usuario o contraseña incorrectos.
+                {errorMsg}
               </div>
               <div style={{ fontSize: '12px', color: '#B91C1C', marginTop: '2px' }}>
                 Revisa tus datos e inténtalo nuevamente.
@@ -191,10 +178,11 @@ export default function LoginTaller({ onLoginSuccess, onVolverACliente }) {
 
           <button
             type="submit"
+            disabled={loading}
             className="btn-primary"
-            style={{ width: '100%', justifyContent: 'center', marginTop: '4px' }}
+            style={{ width: '100%', justifyContent: 'center', marginTop: '4px', opacity: loading ? 0.7 : 1 }}
           >
-            Ingresar
+            {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
         </form>
 

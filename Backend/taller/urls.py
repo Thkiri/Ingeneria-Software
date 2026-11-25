@@ -10,6 +10,7 @@ from .views import (
     RegistroHorasViewSet,
     ControlCalidadViewSet,
     consulta_publica_cliente,
+    login_taller,
 )
 
 router = DefaultRouter()
@@ -23,6 +24,7 @@ router.register(r'horas', RegistroHorasViewSet, basename='horas')
 router.register(r'controles-calidad', ControlCalidadViewSet, basename='control-calidad')
 
 urlpatterns = [
+    path('login/', login_taller, name='login-taller'),
     path('consulta-publica/', consulta_publica_cliente, name='consulta-publica'),
     path('', include(router.urls)),
 ]

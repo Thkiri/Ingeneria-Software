@@ -418,3 +418,66 @@ def consulta_publica_cliente(request):
 
     serializer = ConsultaPublicaOTSerializer(orden)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_taller(request):
+    """
+    Autenticación real contra la tabla auth_user + PerfilUsuario de Django.
+    Permite ingresar a cualquier usuario activo creado en el sistema (incluyendo Personal / Usuarios).
+    """
+    username = (request.data.get('username') or '').strip()
+    password = request.data.get('password') or ''
+
+    if not username or not password:
+        return Response(
+            {"error": "Debes ingresar usuario y contraseña."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user = User.objects.select_related('perfil').filter(username__iexact=username).first()
+    if not user or not user.check_password(password):
+        return Response(
+            {"error": "Usuario o contraseña incorrectos."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    if not user.is_active:
+        return Response(
+            {"error": "Esta cuenta se encuentra deshabilitada. Contacta al Jefe de Taller."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    perfil = getattr(user, 'perfil', None)
+    rol_bd = perfil.rol if perfil else (PerfilUsuario.Rol.ADMINISTRADOR if user.is_superuser else PerfilUsuario.Rol.MECANICO)
+
+    if rol_bd in (PerfilUsuario.Rol.ADMINISTRADOR, PerfilUsuario.Rol.JEFE_TALLER):
+        rol_ui = 'JEFE_TALLER'
+        rol_label = 'Administrador' if rol_bd == PerfilUsuario.Rol.ADMINISTRADOR else 'Jefe de taller'
+        vista_inicial = 'dashboard'
+    elif rol_bd == PerfilUsuario.Rol.RECEPCIONISTA:
+        rol_ui = 'RECEPCIONISTA'
+        rol_label = 'Recepción'
+        vista_inicial = 'recepcion-inicio'
+    else:
+        rol_ui = 'MECANICO'
+        rol_label = 'Mecánico'
+        vista_inicial = 'mecanico-ordenes'
+
+    nombre = f"{user.first_name} {user.last_name}".strip() or user.username
+    partes = nombre.split()
+    iniciales = (partes[0][0] + (partes[1][0] if len(partes) > 1 else partes[0][1:2])).upper()
+
+    return Response({
+        'id': user.id,
+        'username': user.username,
+        'nombre': nombre,
+        'iniciales': iniciales,
+        'rol': rol_ui,
+        'rol_bd': rol_bd,
+        'rolLabel': rol_label,
+        'especialidad': perfil.especialidad if perfil else '',
+        'tarifa_hora': float(perfil.tarifa_hora) if perfil else 0.0,
+        'vistaInicial': vista_inicial,
+    }, status=status.HTTP_200_OK)
