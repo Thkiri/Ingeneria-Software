@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, DollarSign, Wrench, Users, ExternalLink, ClipboardList, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, FileText, DollarSign, Wrench, Users, Car, ExternalLink, ClipboardList, ShieldCheck } from 'lucide-react';
 
 export default function Sidebar({ currentView, onNavigate, usuarioActual }) {
   const rol = usuarioActual?.rol || 'JEFE_TALLER';
@@ -36,23 +36,31 @@ export default function Sidebar({ currentView, onNavigate, usuarioActual }) {
                 onClick={() => onNavigate('nueva-ot')}
               >
                 <FileText size={18} />
-                <span>Órdenes de trabajo</span>
+                <span>Nueva OT</span>
               </button>
 
               <button
-                className={`nav-item ${currentView === 'clientes-vehiculos' ? 'active' : ''}`}
-                onClick={() => onNavigate('clientes-vehiculos')}
+                className={`nav-item ${currentView === 'clientes' ? 'active' : ''}`}
+                onClick={() => onNavigate('clientes')}
               >
                 <Users size={18} />
-                <span>Clientes y Vehículos</span>
+                <span>Clientes</span>
+              </button>
+
+              <button
+                className={`nav-item ${currentView === 'vehiculos' ? 'active' : ''}`}
+                onClick={() => onNavigate('vehiculos')}
+              >
+                <Car size={18} />
+                <span>Vehículos</span>
               </button>
 
               <button
                 className={`nav-item ${currentView === 'cobros' ? 'active' : ''}`}
                 onClick={() => onNavigate('cobros')}
               >
-                <DollarSign size={18} />
-                <span>Cobros</span>
+                <ClipboardList size={18} />
+                <span>Órdenes</span>
               </button>
 
               <button
@@ -85,11 +93,19 @@ export default function Sidebar({ currentView, onNavigate, usuarioActual }) {
               </button>
 
               <button
-                className={`nav-item ${currentView === 'clientes-vehiculos' ? 'active' : ''}`}
-                onClick={() => onNavigate('clientes-vehiculos')}
+                className={`nav-item ${currentView === 'clientes' ? 'active' : ''}`}
+                onClick={() => onNavigate('clientes')}
               >
                 <Users size={18} />
-                <span>Clientes y Vehículos</span>
+                <span>Clientes</span>
+              </button>
+
+              <button
+                className={`nav-item ${currentView === 'vehiculos' ? 'active' : ''}`}
+                onClick={() => onNavigate('vehiculos')}
+              >
+                <Car size={18} />
+                <span>Vehículos</span>
               </button>
             </>
           )}

@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -446,3 +448,40 @@ class TecniMotorSprint4E2ETests(TestCase):
         self.assertEqual(float(res_can.data['total_a_pagar']), 0.0)
         self.assertEqual(len(res_can.data['cierres_cobro']), 1)
         self.assertEqual(float(res_can.data['cierres_cobro'][0]['total_a_pagar']), 0.0)
+
+    def test_fecha_estimada_entrega_no_permite_fechas_pasadas(self):
+        """No se permite fijar una fecha estimada de entrega anterior a hoy."""
+        _, ot_num = self._crear_escenario_base()
+        ayer = (date.today() - timedelta(days=1)).isoformat()
+        manana = (date.today() + timedelta(days=1)).isoformat()
+
+        res_bad = self.client.patch(
+            f'/api/ordenes/{ot_num}/',
+            {'fecha_estimada_entrega': ayer},
+            format='json',
+        )
+        self.assertEqual(res_bad.status_code, 400)
+        self.assertIn('fecha_estimada_entrega', res_bad.data)
+
+        res_ok = self.client.patch(
+            f'/api/ordenes/{ot_num}/',
+            {'fecha_estimada_entrega': manana},
+            format='json',
+        )
+        self.assertEqual(res_ok.status_code, 200)
+        self.assertEqual(res_ok.data['fecha_estimada_entrega'], manana)
+
+    def test_bloqueo_horas_en_espera_repuestos(self):
+        """No se pueden imputar horas hombre mientras la OT está en Espera de Repuestos (ESP)."""
+        u_id, ot_num = self._crear_escenario_base()
+        self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'DIA'}, format='json')
+        self.client.post(f'/api/ordenes/{ot_num}/cambiar-estado/', {'nuevo_estado': 'ESP'}, format='json')
+
+        res_h_esp = self.client.post('/api/horas/', {
+            'orden': ot_num,
+            'mecanico': u_id,
+            'horas': 1,
+            'tarifa': 17500,
+            'descripcion': 'Intento en espera de repuestos',
+        }, format='json')
+        self.assertEqual(res_h_esp.status_code, 400)

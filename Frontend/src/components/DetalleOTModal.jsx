@@ -515,6 +515,7 @@ export default function DetalleOTModal({
                       setShowRepuestoModal(true);
                     }}
                     onEliminarRepuesto={handleEliminarRepuesto}
+                    onIrAHoras={() => setActiveTab('horas')}
                   />
                 )}
 
@@ -556,6 +557,7 @@ export default function DetalleOTModal({
               onTransicionEstado={handleTransicionEstado}
               onReingresoGarantia={handleReingresoGarantia}
               onRegistrarCobroParcial={handleRegistrarCobroParcial}
+              onNotificarCliente={handleNotificarCliente}
             />
           </div>
         </div>

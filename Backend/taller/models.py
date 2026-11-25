@@ -528,9 +528,13 @@ class RegistroHoras(models.Model):
                 raise ValidationError(
                     "No se pueden modificar las horas hombre de una orden que ya aprobó control de calidad o está cerrada."
                 )
-            if self.orden.estado in [OrdenTrabajo.Estado.INGRESADA, OrdenTrabajo.Estado.EN_DIAGNOSTICO]:
+            if self.orden.estado in [
+                OrdenTrabajo.Estado.INGRESADA,
+                OrdenTrabajo.Estado.EN_DIAGNOSTICO,
+                OrdenTrabajo.Estado.ESPERA_REPUESTOS,
+            ]:
                 raise ValidationError(
-                    "No se pueden registrar las horas en diagnóstico. Las horas se imputan a partir de 'En Reparación'."
+                    "No se pueden registrar horas antes de 'En Reparación' (ni en diagnóstico ni en espera de repuestos)."
                 )
             if self.orden.reingresado_por_garantia:
                 self.tarifa = Decimal("0.00")

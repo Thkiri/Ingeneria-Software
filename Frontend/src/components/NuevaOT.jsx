@@ -46,30 +46,28 @@ export default function NuevaOT({ onCancel, onSuccess }) {
         rut: '',
         telefono: '',
         email: '',
+        patente: '',
+        marca: '',
+        modelo: '',
+        anio: new Date().getFullYear(),
+        kilometraje: '',
       }));
       return;
     }
     const cli = clientesList.find(c => String(c.id) === String(id));
     if (cli) {
-      const autosCli = vehiculosList.filter(v => v.cliente === cli.id);
-      const primerAuto = autosCli[0] || null;
       setFormData(prev => ({
         ...prev,
         nombreCompleto: cli.nombre_completo || `${cli.nombre} ${cli.apellido}`.trim(),
         rut: cli.rut || '',
         telefono: cli.telefono || '',
         email: cli.email || '',
-        ...(primerAuto ? {
-          patente: primerAuto.patente,
-          marca: primerAuto.marca,
-          modelo: primerAuto.modelo,
-          anio: primerAuto.anio,
-          kilometraje: primerAuto.kilometraje || 0,
-        } : {}),
+        patente: '',
+        marca: '',
+        modelo: '',
+        anio: new Date().getFullYear(),
+        kilometraje: '',
       }));
-      if (primerAuto) {
-        setVehiculoExistenteId(String(primerAuto.id));
-      }
     }
   };
 
@@ -89,10 +87,6 @@ export default function NuevaOT({ onCancel, onSuccess }) {
     }
     const veh = vehiculosList.find(v => String(v.id) === String(id));
     if (veh) {
-      const dueno = clientesList.find(c => c.id === veh.cliente);
-      if (dueno && !clienteExistenteId) {
-        setClienteExistenteId(String(dueno.id));
-      }
       setFormData(prev => ({
         ...prev,
         patente: veh.patente || '',
@@ -100,15 +94,13 @@ export default function NuevaOT({ onCancel, onSuccess }) {
         modelo: veh.modelo || '',
         anio: veh.anio || new Date().getFullYear(),
         kilometraje: veh.kilometraje ?? 0,
-        ...(dueno ? {
-          nombreCompleto: dueno.nombre_completo || `${dueno.nombre} ${dueno.apellido}`.trim(),
-          rut: dueno.rut || '',
-          telefono: dueno.telefono || '',
-          email: dueno.email || '',
-        } : {}),
       }));
     }
   };
+
+  const vehiculosDelClienteSeleccionado = clienteExistenteId
+    ? vehiculosList.filter((v) => String(v.cliente) === String(clienteExistenteId))
+    : [];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -327,24 +319,33 @@ export default function NuevaOT({ onCancel, onSuccess }) {
 
               <div className="form-group" style={{ marginBottom: '16px', background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
                 <label style={{ fontSize: '12px', fontWeight: 700, color: '#1E3A8A' }}>
-                  Vehículo registrado o nuevo vehículo
+                  Vehículos asociados al cliente seleccionado
                 </label>
-                <select
-                  className="input-control"
-                  value={vehiculoExistenteId}
-                  onChange={handleSelectVehiculoExistente}
-                  style={{ marginTop: '6px' }}
-                >
-                  <option value="">+ Registrar un vehículo nuevo en los campos de abajo</option>
-                  {(clienteExistenteId
-                    ? vehiculosList.filter((v) => String(v.cliente) === String(clienteExistenteId))
-                    : vehiculosList
-                  ).map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.patente} — {v.marca} {v.modelo} ({v.anio}) · {v.cliente_detalle?.nombre_completo}
-                    </option>
-                  ))}
-                </select>
+                {clienteExistenteId ? (
+                  vehiculosDelClienteSeleccionado.length > 0 ? (
+                    <select
+                      className="input-control"
+                      value={vehiculoExistenteId}
+                      onChange={handleSelectVehiculoExistente}
+                      style={{ marginTop: '6px' }}
+                    >
+                      <option value="">+ Registrar un vehículo nuevo manualmente abajo</option>
+                      {vehiculosDelClienteSeleccionado.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.patente} — {v.marca} {v.modelo} ({v.anio})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div style={{ fontSize: '12px', color: '#64748B', marginTop: '6px' }}>
+                      Este cliente no tiene vehículos registrados. Completa los campos de abajo para registrar uno manualmente.
+                    </div>
+                  )
+                ) : (
+                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '6px' }}>
+                    Selecciona un cliente arriba para ver sus vehículos asociados, o completa los campos manualmente para un nuevo registro.
+                  </div>
+                )}
               </div>
 
               <div className="form-row">

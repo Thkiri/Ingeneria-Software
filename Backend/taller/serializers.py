@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.utils import timezone
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import (
@@ -237,9 +238,13 @@ class RegistroHorasSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "No se pueden modificar las horas hombre de una orden que ya aprobó control de calidad o está cerrada."
             )
-        if orden and orden.estado in [OrdenTrabajo.Estado.INGRESADA, OrdenTrabajo.Estado.EN_DIAGNOSTICO]:
+        if orden and orden.estado in [
+            OrdenTrabajo.Estado.INGRESADA,
+            OrdenTrabajo.Estado.EN_DIAGNOSTICO,
+            OrdenTrabajo.Estado.ESPERA_REPUESTOS,
+        ]:
             raise serializers.ValidationError(
-                "No se pueden registrar las horas en diagnóstico. Las horas se imputan a partir de 'En Reparación'."
+                "No se pueden registrar horas antes de 'En Reparación' (ni en diagnóstico ni en espera de repuestos)."
             )
         if orden and orden.reingresado_por_garantia:
             attrs['tarifa'] = Decimal("0.00")
@@ -371,6 +376,15 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
 
     def get_codigo_ot(self, obj):
         return f"OT-{obj.numero:04d}"
+
+    def validate_fecha_estimada_entrega(self, value):
+        if value is not None:
+            fecha_previa = self.instance.fecha_estimada_entrega if self.instance else None
+            if value != fecha_previa and value < timezone.localdate():
+                raise serializers.ValidationError(
+                    "La fecha estimada de entrega no puede ser anterior a la fecha de hoy."
+                )
+        return value
 
     def validate(self, attrs):
         """

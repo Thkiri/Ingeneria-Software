@@ -19,8 +19,9 @@ export default function VistaMecanico({
 }) {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Filtrar órdenes asignadas exclusivamente al mecánico activo (como principal o apoyo)
+  // Filtrar órdenes activas asignadas al mecánico (excluyendo órdenes canceladas)
   const ordenesDelMecanico = ordenes.filter((o) => {
+    if (o.estado === 'CAN') return false;
     const userMecPrincipal = o.mecanico_detalle?.username?.toLowerCase() || '';
     const userMecApoyo = o.segundo_mecanico_detalle?.username?.toLowerCase() || '';
     const currentUsername = usuarioActual?.username?.toLowerCase() || '';

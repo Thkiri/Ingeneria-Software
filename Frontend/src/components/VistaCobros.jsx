@@ -1,13 +1,74 @@
-import React, { useState } from 'react';
-import { DollarSign, CheckCircle2, FileText } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { FileText, Search } from 'lucide-react';
+
+const ESTADOS_FILTRO = [
+  { code: 'ING', label: 'Ingresada' },
+  { code: 'DIA', label: 'En Diagnóstico' },
+  { code: 'ESP', label: 'Espera de Repuestos' },
+  { code: 'REP', label: 'En Reparación' },
+  { code: 'CAL', label: 'Control de Calidad' },
+  { code: 'LST', label: 'Lista para Entrega' },
+  { code: 'ENT', label: 'Entregada' },
+  { code: 'CAN', label: 'Cancelada' },
+];
+
+function cumpleFiltroFecha(fechaStr, filtroFecha) {
+  if (filtroFecha === 'todas' || !fechaStr) return true;
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const [y, m, d] = fechaStr.split('-').map(Number);
+  if (!y || !m || !d) return true;
+  const fechaOrden = new Date(y, m - 1, d);
+  const diffDias = Math.floor((hoy - fechaOrden) / (1000 * 60 * 60 * 24));
+  if (filtroFecha === 'hoy') return diffDias === 0;
+  if (filtroFecha === 'semana') return diffDias >= 0 && diffDias <= 7;
+  if (filtroFecha === 'mes') return diffDias >= 0 && diffDias <= 30;
+  return true;
+}
 
 export default function VistaCobros({ ordenes = [], onSelectOrden }) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedEstado, setSelectedEstado] = useState('');
+  const [selectedCliente, setSelectedCliente] = useState('');
+  const [filtroFecha, setFiltroFecha] = useState('todas');
   const [ordenActivaNum, setOrdenActivaNum] = useState(
     ordenes.length > 0 ? ordenes[0].numero : null
   );
 
+  const clientesUnicos = useMemo(() => {
+    const mapa = new Map();
+    ordenes.forEach((o) => {
+      if (o.cliente && !mapa.has(o.cliente)) {
+        mapa.set(o.cliente, o.cliente_detalle?.nombre_completo || `Cliente #${o.cliente}`);
+      }
+    });
+    return Array.from(mapa.entries()).map(([id, nombre]) => ({ id, nombre }));
+  }, [ordenes]);
+
+  const filteredOrdenes = ordenes.filter((o) => {
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase().trim();
+      const numMatch = String(o.numero).includes(q) || (o.codigo_ot || '').toLowerCase().includes(q);
+      const patMatch = o.vehiculo_detalle?.patente?.toLowerCase().includes(q);
+      const cliMatch = o.cliente_detalle?.nombre_completo?.toLowerCase().includes(q);
+      const rutMatch = o.cliente_detalle?.rut?.toLowerCase().includes(q);
+      if (!numMatch && !patMatch && !cliMatch && !rutMatch) return false;
+    }
+    if (selectedEstado && o.estado !== selectedEstado) return false;
+    if (selectedCliente && String(o.cliente) !== String(selectedCliente)) return false;
+    if (!cumpleFiltroFecha(o.fecha_ingreso, filtroFecha)) return false;
+    return true;
+  });
+
   const ordenSeleccionada =
-    ordenes.find((o) => o.numero === ordenActivaNum) || ordenes[0] || null;
+    filteredOrdenes.find((o) => o.numero === ordenActivaNum) || filteredOrdenes[0] || null;
+
+  const limpiarFiltros = () => {
+    setSearchTerm('');
+    setSelectedEstado('');
+    setSelectedCliente('');
+    setFiltroFecha('todas');
+  };
 
   const formatCLP = (val) => {
     const num = Number(val) || 0;
@@ -15,14 +76,79 @@ export default function VistaCobros({ ordenes = [], onSelectOrden }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
       <div>
         <h2 style={{ fontSize: '26px', fontWeight: 700, color: '#0F172A' }}>
-          Liquidación y Cobros de Órdenes (HU-10)
+          Órdenes y Cobros
         </h2>
         <p style={{ fontSize: '14px', color: '#64748B', marginTop: '4px' }}>
-          Desglose oficial de cobro: Diagnóstico base ($15.000), Repuestos netos, Mano de obra e IVA (19%).
+          Registro histórico completo de órdenes de trabajo, filtros rápidos y desglose oficial de cobro (Diagnóstico, Repuestos, Mano de obra e IVA 19%).
         </p>
+      </div>
+
+      {/* Barra de Filtros estilo Dashboard del Jefe */}
+      <div className="filter-bar" style={{ gridTemplateColumns: '1.5fr 1fr 1fr 1fr auto' }}>
+        <div className="filter-group">
+          <label>Buscar orden</label>
+          <div className="search-input-wrapper">
+            <Search size={18} />
+            <input
+              type="text"
+              className="input-control"
+              placeholder="N° OT, patente, RUT o cliente..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="filter-group">
+          <label>Estado</label>
+          <select
+            className="input-control"
+            value={selectedEstado}
+            onChange={(e) => setSelectedEstado(e.target.value)}
+          >
+            <option value="">Todos los estados</option>
+            {ESTADOS_FILTRO.map((e) => (
+              <option key={e.code} value={e.code}>{e.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label>Cliente</label>
+          <select
+            className="input-control"
+            value={selectedCliente}
+            onChange={(e) => setSelectedCliente(e.target.value)}
+          >
+            <option value="">Todos los clientes</option>
+            {clientesUnicos.map((c) => (
+              <option key={c.id} value={c.id}>{c.nombre}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label>Fecha de ingreso</label>
+          <select
+            className="input-control"
+            value={filtroFecha}
+            onChange={(e) => setFiltroFecha(e.target.value)}
+          >
+            <option value="todas">Todas las fechas</option>
+            <option value="hoy">Hoy</option>
+            <option value="semana">Últimos 7 días</option>
+            <option value="mes">Últimos 30 días</option>
+          </select>
+        </div>
+
+        <div>
+          <button className="btn-clear-filters" onClick={limpiarFiltros}>
+            Limpiar filtros
+          </button>
+        </div>
       </div>
 
       <div style={{
@@ -39,11 +165,11 @@ export default function VistaCobros({ ordenes = [], onSelectOrden }) {
           padding: '22px'
         }}>
           <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '14px' }}>
-            Seleccionar Orden de Trabajo
+            Órdenes encontradas ({filteredOrdenes.length} de {ordenes.length})
           </h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {ordenes.map((o) => {
+            {filteredOrdenes.map((o) => {
               const isSelected = ordenSeleccionada?.numero === o.numero;
               return (
                 <div
@@ -77,6 +203,11 @@ export default function VistaCobros({ ordenes = [], onSelectOrden }) {
                 </div>
               );
             })}
+            {filteredOrdenes.length === 0 && (
+              <div style={{ padding: '20px', textAlign: 'center', fontSize: '13px', color: '#64748B' }}>
+                No se encontraron órdenes con los filtros aplicados.
+              </div>
+            )}
           </div>
         </div>
 

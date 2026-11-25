@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Search, Plus } from 'lucide-react';
-import DirectorioClientesVehiculos from './DirectorioClientesVehiculos';
 
 const BADGE_MAP = {
   ING: { label: 'Ingresada', cls: 'badge-ing' },
@@ -20,61 +19,106 @@ export default function VistaRecepcion({
   onSelectOrden,
 }) {
   const [searchOrden, setSearchOrden] = useState('');
+  const [selectedEstado, setSelectedEstado] = useState('');
+  const [filtroFecha, setFiltroFecha] = useState('todas');
 
-  if (subView === 'clientes-vehiculos') {
-    return (
-      <DirectorioClientesVehiculos
-        ordenes={ordenes}
-        onNuevaOT={onNuevaOT}
-      />
-    );
-  }
+  const cumpleFiltroFecha = (fechaStr) => {
+    if (filtroFecha === 'todas' || !fechaStr) return true;
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const [y, m, d] = fechaStr.split('-').map(Number);
+    if (!y || !m || !d) return true;
+    const fechaOrden = new Date(y, m - 1, d);
+    const diffDias = Math.floor((hoy - fechaOrden) / (1000 * 60 * 60 * 24));
+    if (filtroFecha === 'hoy') return diffDias === 0;
+    if (filtroFecha === 'semana') return diffDias >= 0 && diffDias <= 7;
+    if (filtroFecha === 'mes') return diffDias >= 0 && diffDias <= 30;
+    return true;
+  };
 
   const filteredOrdenes = ordenes.filter((o) => {
-    if (!searchOrden.trim()) return true;
-    const q = searchOrden.toLowerCase().trim();
-    const numMatch = String(o.numero).includes(q) || (o.codigo_ot || '').toLowerCase().includes(q);
-    const patMatch = o.vehiculo_detalle?.patente?.toLowerCase().includes(q);
-    const cliMatch = o.cliente_detalle?.nombre_completo?.toLowerCase().includes(q);
-    const rutMatch = o.cliente_detalle?.rut?.toLowerCase().includes(q);
-    return numMatch || patMatch || cliMatch || rutMatch;
+    if (searchOrden.trim()) {
+      const q = searchOrden.toLowerCase().trim();
+      const numMatch = String(o.numero).includes(q) || (o.codigo_ot || '').toLowerCase().includes(q);
+      const patMatch = o.vehiculo_detalle?.patente?.toLowerCase().includes(q);
+      const cliMatch = o.cliente_detalle?.nombre_completo?.toLowerCase().includes(q);
+      const rutMatch = o.cliente_detalle?.rut?.toLowerCase().includes(q);
+      if (!numMatch && !patMatch && !cliMatch && !rutMatch) return false;
+    }
+    if (selectedEstado && o.estado !== selectedEstado) return false;
+    if (!cumpleFiltroFecha(o.fecha_ingreso)) return false;
+    return true;
   });
 
+  const limpiarFiltros = () => {
+    setSearchOrden('');
+    setSelectedEstado('');
+    setFiltroFecha('todas');
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div>
-        <h2 style={{ fontSize: '26px', fontWeight: 700, color: '#0F172A' }}>
-          Inicio de Recepción
-        </h2>
-        <p style={{ fontSize: '14px', color: '#64748B', marginTop: '4px' }}>
-          Consulta órdenes y registra ingresos. Los datos técnicos son de solo lectura.
-        </p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+      <div className="dashboard-header">
+        <div className="header-title">
+          <h2>Inicio de Recepción</h2>
+          <p>
+            Consulta órdenes, registra ingresos, aprueba presupuestos y notifica entregas.
+          </p>
+        </div>
+
+        <button className="btn-primary" onClick={onNuevaOT}>
+          <Plus size={18} />
+          <span>Nueva OT</span>
+        </button>
       </div>
 
-      {/* Barra de Búsqueda + Nueva OT */}
-      <div>
-        <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px', display: 'block' }}>
-          Buscar orden
-        </label>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '16px', alignItems: 'center' }}>
+      {/* Barra de Filtros estilo Dashboard */}
+      <div className="filter-bar">
+        <div className="filter-group">
+          <label>Buscar orden</label>
           <div className="search-input-wrapper">
             <Search size={18} />
             <input
               type="text"
               className="input-control"
-              placeholder="N° de OT, patente o RUT"
+              placeholder="N° de OT, patente, RUT o cliente..."
               value={searchOrden}
               onChange={(e) => setSearchOrden(e.target.value)}
             />
           </div>
+        </div>
 
-          <button
-            className="btn-primary"
-            onClick={onNuevaOT}
-            style={{ minWidth: '180px', justifyContent: 'center' }}
+        <div className="filter-group">
+          <label>Estado</label>
+          <select
+            className="input-control"
+            value={selectedEstado}
+            onChange={(e) => setSelectedEstado(e.target.value)}
           >
-            <Plus size={18} />
-            <span>Nueva OT</span>
+            <option value="">Todos los estados</option>
+            {Object.entries(BADGE_MAP).map(([code, info]) => (
+              <option key={code} value={code}>{info.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label>Fecha de ingreso</label>
+          <select
+            className="input-control"
+            value={filtroFecha}
+            onChange={(e) => setFiltroFecha(e.target.value)}
+          >
+            <option value="todas">Todas las fechas</option>
+            <option value="hoy">Hoy</option>
+            <option value="semana">Últimos 7 días</option>
+            <option value="mes">Últimos 30 días</option>
+          </select>
+        </div>
+
+        <div>
+          <button className="btn-clear-filters" onClick={limpiarFiltros}>
+            Limpiar filtros
           </button>
         </div>
       </div>

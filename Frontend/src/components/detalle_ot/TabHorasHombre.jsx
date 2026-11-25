@@ -14,7 +14,7 @@ export default function TabHorasHombre({
   onEliminarHora,
 }) {
   const estaCerrada = cobroBloqueado ?? ['LST', 'ENT', 'CAN'].includes(orden.estado);
-  const bloqueadoPorEstado = ['ING', 'DIA'].includes(orden.estado);
+  const bloqueadoPorEstado = ['ING', 'DIA', 'ESP'].includes(orden.estado);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
@@ -61,7 +61,7 @@ export default function TabHorasHombre({
           borderRadius: '8px',
           fontSize: '13px'
         }}>
-          No se pueden registrar las horas en diagnóstico. Avanza la orden a <strong>En Reparación</strong> para imputar horas.
+          No se pueden registrar horas en esta etapa (<strong>Ingresada</strong>, <strong>En Diagnóstico</strong> o <strong>Espera de Repuestos</strong>). Avanza la orden a <strong>En Reparación</strong> para imputar horas.
         </div>
       ) : (
         <form

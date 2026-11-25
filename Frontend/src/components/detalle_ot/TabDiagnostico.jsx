@@ -20,6 +20,10 @@ export default function TabDiagnostico({
   loading,
   onSave,
 }) {
+  const hoyISO = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+    .toISOString()
+    .split('T')[0];
+
   return (
     <form onSubmit={onSave} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
       <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0F172A' }}>
@@ -118,6 +122,7 @@ export default function TabDiagnostico({
             </label>
             <input
               type="date"
+              min={hoyISO}
               className="input-control"
               value={fechaEstimada}
               onChange={(e) => setFechaEstimada(e.target.value)}

@@ -7,6 +7,8 @@ import DetalleOTModal from './components/DetalleOTModal';
 import ConsultaCliente from './components/ConsultaCliente';
 import LoginTaller, { USUARIOS_DEMO } from './components/LoginTaller';
 import VistaRecepcion from './components/VistaRecepcion';
+import VistaClientes from './components/VistaClientes';
+import VistaVehiculos from './components/VistaVehiculos';
 import VistaMecanico from './components/VistaMecanico';
 import VistaCobros from './components/VistaCobros';
 import VistaUsuarios from './components/VistaUsuarios';
@@ -145,12 +147,26 @@ export default function App() {
             />
           )}
 
-          {(currentView === 'recepcion-inicio' || currentView === 'clientes-vehiculos') && (
+          {currentView === 'recepcion-inicio' && (
             <VistaRecepcion
               subView={currentView}
               ordenes={ordenes}
               onNuevaOT={() => setCurrentView('nueva-ot')}
               onSelectOrden={(orden) => setSelectedOrden(orden)}
+            />
+          )}
+
+          {currentView === 'clientes' && (
+            <VistaClientes
+              ordenes={ordenes}
+              onNuevaOT={() => setCurrentView('nueva-ot')}
+            />
+          )}
+
+          {currentView === 'vehiculos' && (
+            <VistaVehiculos
+              ordenes={ordenes}
+              onNuevaOT={() => setCurrentView('nueva-ot')}
             />
           )}
 

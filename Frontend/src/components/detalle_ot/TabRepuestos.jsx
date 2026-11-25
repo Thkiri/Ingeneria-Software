@@ -8,6 +8,7 @@ export default function TabRepuestos({
   formatCLP,
   onOpenAgregarModal,
   onEliminarRepuesto,
+  onIrAHoras,
 }) {
   const totalUnidades = repuestosList.reduce(
     (acc, r) => acc + (Number(r.cantidad) || 0),
@@ -87,8 +88,23 @@ export default function TabRepuestos({
           ))}
           {repuestosList.length === 0 && (
             <tr>
-              <td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: '#64748B' }}>
-                No se han registrado repuestos en esta orden. Pulsa "+ Agregar repuesto".
+              <td colSpan={5} style={{ padding: '20px 16px', textAlign: 'center', color: '#475569' }}>
+                <div style={{ fontWeight: 600, color: '#0F172A', marginBottom: '4px' }}>
+                  Sin repuestos requeridos ($0)
+                </div>
+                <div style={{ fontSize: '12px', color: '#64748B' }}>
+                  Los repuestos son opcionales. Para mantenimiento preventivo o servicios sin cambio de piezas, continúa directamente a <strong>Horas hombre</strong>.
+                </div>
+                {!cobroBloqueado && onIrAHoras && (
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={onIrAHoras}
+                    style={{ marginTop: '12px', height: '34px', padding: '0 14px', fontSize: '12px', fontWeight: 600 }}
+                  >
+                    Sin repuestos · Ir a Horas hombre
+                  </button>
+                )}
               </td>
             </tr>
           )}
